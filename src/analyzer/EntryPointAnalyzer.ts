@@ -16,7 +16,7 @@ export class EntryPointAnalyzer {
 
   constructor(context: ProjectContext) {
     this.context = context;
-    const projectOptions: any = {
+    const projectOptions: { skipAddingFilesFromTsConfig: boolean; tsConfigFilePath?: string } = {
       skipAddingFilesFromTsConfig: false,
     };
 

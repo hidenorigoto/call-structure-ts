@@ -11,7 +11,7 @@ export class ApiController {
     this.logger = new Logger();
   }
 
-  async handleRequest(req: any): Promise<any> {
+  async handleRequest(req: { userId: string }): Promise<{ id: string; name: string; processed: boolean }> {
     this.logger.info('Handling request');
     
     const user = await this.userService.getUser(req.userId);
@@ -20,7 +20,7 @@ export class ApiController {
     return result;
   }
 
-  private processUser(user: any): any {
+  private processUser(user: { id: string; name: string; email: string }): { id: string; name: string; processed: boolean } {
     return {
       id: user.id,
       name: user.name,
@@ -35,6 +35,6 @@ export function createApi(): ApiController {
   return controller;
 }
 
-function initializeController(controller: ApiController): void {
+function initializeController(_controller: ApiController): void {
   // Initialize the controller
 }

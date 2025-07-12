@@ -2,7 +2,7 @@ import { CallGraph, FormatterOptions } from '../types/CallGraph';
 
 export class JsonFormatter {
   format(callGraph: CallGraph, options: FormatterOptions = { format: 'json' }): string {
-    const output: any = {};
+    const output: Record<string, unknown> = {};
 
     // Always include metadata
     if (options.includeMetadata !== false) {
@@ -27,7 +27,7 @@ export class JsonFormatter {
     }
   }
 
-  private generateStatistics(callGraph: CallGraph): any {
+  private generateStatistics(callGraph: CallGraph): Record<string, unknown> {
     const { nodes, edges } = callGraph;
 
     // Basic counts

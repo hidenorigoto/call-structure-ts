@@ -45,7 +45,7 @@ export class CallGraphAnalyzer {
       collectMetrics: options.collectMetrics ?? false,
     };
 
-    const projectOptions: any = {
+    const projectOptions: { skipAddingFilesFromTsConfig: boolean; tsConfigFilePath?: string } = {
       skipAddingFilesFromTsConfig: false,
     };
 

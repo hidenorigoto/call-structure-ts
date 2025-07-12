@@ -1,0 +1,326 @@
+{
+  "metadata": {
+    "generatedAt": "2025-07-12T15:31:48.508Z",
+    "entryPoint": "src/main.ts#main",
+    "maxDepth": 10,
+    "projectRoot": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example",
+    "tsConfigPath": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/tsconfig.json",
+    "totalFiles": 2,
+    "analysisTimeMs": 131
+  },
+  "nodes": [
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/main.ts#main",
+      "name": "main",
+      "filePath": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/main.ts",
+      "line": 3,
+      "column": 0,
+      "type": "function",
+      "async": true,
+      "parameters": [],
+      "returnType": "Promise<void>"
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.createUser",
+      "name": "createUser",
+      "filePath": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts",
+      "line": 10,
+      "column": 2,
+      "type": "method",
+      "async": true,
+      "static": false,
+      "visibility": "public",
+      "parameters": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "returnType": "Promise<import(\"/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService\").User>",
+      "className": "UserService"
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.validateInput",
+      "name": "validateInput",
+      "filePath": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts",
+      "line": 33,
+      "column": 2,
+      "type": "method",
+      "async": false,
+      "static": false,
+      "visibility": "private",
+      "parameters": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "returnType": "void",
+      "className": "UserService"
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.generateId",
+      "name": "generateId",
+      "filePath": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts",
+      "line": 42,
+      "column": 2,
+      "type": "method",
+      "async": false,
+      "static": false,
+      "visibility": "private",
+      "parameters": [],
+      "returnType": "string",
+      "className": "UserService"
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.saveUser",
+      "name": "saveUser",
+      "filePath": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts",
+      "line": 46,
+      "column": 2,
+      "type": "method",
+      "async": true,
+      "static": false,
+      "visibility": "private",
+      "parameters": [
+        {
+          "name": "user",
+          "type": "import(\"/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService\").User",
+          "optional": false
+        }
+      ],
+      "returnType": "Promise<void>",
+      "className": "UserService"
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.delay",
+      "name": "delay",
+      "filePath": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts",
+      "line": 61,
+      "column": 2,
+      "type": "method",
+      "async": true,
+      "static": false,
+      "visibility": "private",
+      "parameters": [
+        {
+          "name": "ms",
+          "type": "number",
+          "optional": false
+        }
+      ],
+      "returnType": "Promise<void>",
+      "className": "UserService"
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#1532",
+      "name": "arrow-function",
+      "filePath": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts",
+      "line": 62,
+      "column": 23,
+      "type": "arrow",
+      "async": false,
+      "parameters": [
+        {
+          "name": "resolve",
+          "type": "(value: void | PromiseLike<void>) => void",
+          "optional": false
+        }
+      ],
+      "returnType": "NodeJS.Timeout"
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.sendWelcomeEmail",
+      "name": "sendWelcomeEmail",
+      "filePath": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts",
+      "line": 51,
+      "column": 2,
+      "type": "method",
+      "async": true,
+      "static": false,
+      "visibility": "private",
+      "parameters": [
+        {
+          "name": "user",
+          "type": "import(\"/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService\").User",
+          "optional": false
+        }
+      ],
+      "returnType": "Promise<void>",
+      "className": "UserService"
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.getUserById",
+      "name": "getUserById",
+      "filePath": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts",
+      "line": 25,
+      "column": 2,
+      "type": "method",
+      "async": true,
+      "static": false,
+      "visibility": "public",
+      "parameters": [
+        {
+          "name": "id",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "returnType": "Promise<import(\"/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService\").User | null>",
+      "className": "UserService"
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.logAccess",
+      "name": "logAccess",
+      "filePath": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts",
+      "line": 56,
+      "column": 2,
+      "type": "method",
+      "async": true,
+      "static": false,
+      "visibility": "private",
+      "parameters": [
+        {
+          "name": "user",
+          "type": "import(\"/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService\").User",
+          "optional": false
+        }
+      ],
+      "returnType": "Promise<void>",
+      "className": "UserService"
+    }
+  ],
+  "edges": [
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/main.ts#main->/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.createUser-0",
+      "source": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/main.ts#main",
+      "target": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.createUser",
+      "type": "async",
+      "line": 7,
+      "column": 21,
+      "argumentTypes": [
+        "\"John Doe\"",
+        "\"john@example.com\""
+      ]
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.createUser->/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.validateInput-1",
+      "source": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.createUser",
+      "target": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.validateInput",
+      "type": "sync",
+      "line": 11,
+      "column": 4,
+      "argumentTypes": [
+        "string",
+        "string"
+      ]
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.createUser->/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.generateId-2",
+      "source": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.createUser",
+      "target": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.generateId",
+      "type": "sync",
+      "line": 14,
+      "column": 10,
+      "argumentTypes": []
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.createUser->/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.saveUser-3",
+      "source": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.createUser",
+      "target": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.saveUser",
+      "type": "async",
+      "line": 19,
+      "column": 10,
+      "argumentTypes": [
+        "import(\"/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService\").User"
+      ]
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.saveUser->/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.delay-4",
+      "source": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.saveUser",
+      "target": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.delay",
+      "type": "async",
+      "line": 48,
+      "column": 10,
+      "argumentTypes": [
+        "100"
+      ]
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.delay->/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#1532-5",
+      "source": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.delay",
+      "target": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#1532",
+      "type": "callback",
+      "line": 62,
+      "column": 23
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.createUser->/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.sendWelcomeEmail-6",
+      "source": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.createUser",
+      "target": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.sendWelcomeEmail",
+      "type": "async",
+      "line": 20,
+      "column": 10,
+      "argumentTypes": [
+        "import(\"/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService\").User"
+      ]
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.sendWelcomeEmail->/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.delay-7",
+      "source": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.sendWelcomeEmail",
+      "target": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.delay",
+      "type": "async",
+      "line": 53,
+      "column": 10,
+      "argumentTypes": [
+        "50"
+      ]
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/main.ts#main->/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.getUserById-8",
+      "source": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/main.ts#main",
+      "target": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.getUserById",
+      "type": "async",
+      "line": 10,
+      "column": 30,
+      "argumentTypes": [
+        "string"
+      ]
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.getUserById->/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.logAccess-9",
+      "source": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.getUserById",
+      "target": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.logAccess",
+      "type": "async",
+      "line": 28,
+      "column": 12,
+      "argumentTypes": [
+        "import(\"/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService\").User"
+      ]
+    },
+    {
+      "id": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.logAccess->/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.delay-10",
+      "source": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.logAccess",
+      "target": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/UserService.ts#UserService.delay",
+      "type": "async",
+      "line": 58,
+      "column": 10,
+      "argumentTypes": [
+        "10"
+      ]
+    }
+  ],
+  "entryPointId": "/Users/hidenorigoto/work/middleofnowhere/call-structure-ts/examples/simple-example/src/main.ts#main"
+}

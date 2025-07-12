@@ -1,0 +1,12 @@
+{
+  "name": "simple-example",
+  "version": "1.0.0",
+  "description": "Simple example project for call-structure-ts",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

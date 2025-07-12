@@ -6,15 +6,16 @@ import { EntryPointAnalyzer } from '../analyzer/EntryPointAnalyzer';
 import { JsonFormatter } from '../formatter/JsonFormatter';
 import { YamlFormatter } from '../formatter/YamlFormatter';
 import { MermaidFormatter } from '../formatter/MermaidFormatter';
-import { 
-  CallGraphAnalysisOptions, 
-  OutputFormat, 
+import {
+  CallGraphAnalysisOptions,
+  OutputFormat,
   ProjectContext,
-  CallGraphError
+  CallGraphError,
 } from '../types/CallGraph';
 import { logger, LogLevel } from '../utils/logger';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as yaml from 'js-yaml';
 
 const program = new Command();
 
@@ -26,7 +27,7 @@ program
   .option('-v, --verbose', 'Enable verbose logging')
   .option('-q, --quiet', 'Disable all output except errors')
   .option('--debug', 'Enable debug logging')
-  .hook('preAction', (thisCommand) => {
+  .hook('preAction', thisCommand => {
     const opts = thisCommand.opts();
     if (opts.debug) {
       logger.setLevel(LogLevel.DEBUG);
@@ -41,7 +42,10 @@ program
 program
   .command('analyze')
   .description('Analyze call graph from an entry point')
-  .requiredOption('-e, --entry <entry>', 'Entry point (format: "path/to/file.ts#functionName" or "path/to/file.ts#ClassName.methodName")')
+  .requiredOption(
+    '-e, --entry <entry>',
+    'Entry point (format: "path/to/file.ts#functionName" or "path/to/file.ts#ClassName.methodName")'
+  )
   .option('-o, --output <file>', 'Output file path')
   .option('-f, --format <format>', 'Output format (json, yaml, mermaid)', 'json')
   .option('-d, --max-depth <depth>', 'Maximum analysis depth', '10')
@@ -53,7 +57,7 @@ program
   .option('--metrics', 'Include analysis metrics')
   .option('--tsconfig <path>', 'Path to tsconfig.json')
   .option('--project-root <path>', 'Project root directory', '.')
-  .action(async (options) => {
+  .action(async options => {
     try {
       await analyzeCommand(options);
     } catch (error) {
@@ -74,7 +78,7 @@ program
   .option('-f, --format <format>', 'Output format (json, yaml)', 'json')
   .option('--tsconfig <path>', 'Path to tsconfig.json')
   .option('--project-root <path>', 'Project root directory', '.')
-  .action(async (options) => {
+  .action(async options => {
     try {
       await discoverCommand(options);
     } catch (error) {
@@ -89,7 +93,7 @@ program
   .requiredOption('-c, --config <file>', 'Batch configuration file (JSON or YAML)')
   .option('-o, --output-dir <dir>', 'Output directory', './analysis-results')
   .option('--parallel <count>', 'Number of parallel analyses', '1')
-  .action(async (options) => {
+  .action(async options => {
     try {
       await batchCommand(options);
     } catch (error) {
@@ -104,7 +108,7 @@ program
   .requiredOption('-e, --entry <entry>', 'Entry point to validate')
   .option('--tsconfig <path>', 'Path to tsconfig.json')
   .option('--project-root <path>', 'Project root directory', '.')
-  .action(async (options) => {
+  .action(async options => {
     try {
       await validateCommand(options);
     } catch (error) {
@@ -119,7 +123,7 @@ program
   .description('Interactive mode for analysis')
   .option('--tsconfig <path>', 'Path to tsconfig.json')
   .option('--project-root <path>', 'Project root directory', '.')
-  .action(async (options) => {
+  .action(async options => {
     try {
       await interactiveCommand(options);
     } catch (error) {
@@ -132,21 +136,21 @@ async function analyzeCommand(options: any): Promise<void> {
 
   // Create project context
   const context = createProjectContext(options);
-  
+
   // Create analysis options
   const analysisOptions = createAnalysisOptions(options);
-  
+
   // Perform analysis
   const analyzer = new CallGraphAnalyzer(context, analysisOptions);
   const callGraph = await analyzer.analyzeFromEntryPoint(options.entry);
-  
+
   // Format output
   const output = formatOutput(callGraph, options.format, {
     includeMetadata: true,
     includeMetrics: options.metrics,
-    prettify: true
+    prettify: true,
   });
-  
+
   // Save or display output
   if (options.output) {
     await saveOutput(output, options.output);
@@ -161,15 +165,15 @@ async function discoverCommand(options: any): Promise<void> {
 
   const context = createProjectContext(options);
   const analyzer = new EntryPointAnalyzer(context);
-  
+
   let entryPoints;
-  
+
   if (options.pattern) {
     entryPoints = await analyzer.findEntryPointsByPattern(options.pattern);
   } else if (options.controllers || options.handlers || options.main || options.exported) {
     const commonEntryPoints = await analyzer.findCommonEntryPoints();
     entryPoints = [];
-    
+
     if (options.controllers) entryPoints.push(...commonEntryPoints.controllers);
     if (options.handlers) entryPoints.push(...commonEntryPoints.handlers);
     if (options.main) entryPoints.push(...commonEntryPoints.mainFunctions);
@@ -177,14 +181,15 @@ async function discoverCommand(options: any): Promise<void> {
   } else {
     entryPoints = await analyzer.discoverEntryPoints();
   }
-  
+
   logger.success(`Found ${entryPoints.length} entry points`);
-  
+
   // Format output
-  const output = options.format === 'yaml' 
-    ? formatEntryPointsAsYaml(entryPoints)
-    : JSON.stringify({ entryPoints }, null, 2);
-  
+  const output =
+    options.format === 'yaml'
+      ? formatEntryPointsAsYaml(entryPoints)
+      : JSON.stringify({ entryPoints }, null, 2);
+
   // Save or display output
   if (options.output) {
     await saveOutput(output, options.output);
@@ -196,79 +201,90 @@ async function discoverCommand(options: any): Promise<void> {
 
 async function batchCommand(options: any): Promise<void> {
   logger.progress(`Loading batch configuration from: ${options.config}`);
-  
+
   // Load configuration
   const configContent = fs.readFileSync(options.config, 'utf-8');
-  const config = options.config.endsWith('.yaml') || options.config.endsWith('.yml')
-    ? require('js-yaml').load(configContent)
-    : JSON.parse(configContent);
-  
+  const config =
+    options.config.endsWith('.yaml') || options.config.endsWith('.yml')
+      ? yaml.load(configContent)
+      : JSON.parse(configContent);
+
   if (!config.entryPoints || !Array.isArray(config.entryPoints)) {
-    throw new CallGraphError('Invalid batch configuration: missing entryPoints array', 'INVALID_CONFIG');
+    throw new CallGraphError(
+      'Invalid batch configuration: missing entryPoints array',
+      'INVALID_CONFIG'
+    );
   }
-  
+
   // Create output directory
   if (!fs.existsSync(options.outputDir)) {
     fs.mkdirSync(options.outputDir, { recursive: true });
   }
-  
+
   // Process entry points
   const parallelCount = parseInt(options.parallel) || 1;
   const entryPoints = config.entryPoints;
-  
+
   logger.progress(`Processing ${entryPoints.length} entry points (parallel: ${parallelCount})`);
-  
+
   for (let i = 0; i < entryPoints.length; i += parallelCount) {
     const batch = entryPoints.slice(i, i + parallelCount);
-    
-    await Promise.all(batch.map(async (entryPointConfig: any) => {
-      try {
-        const context = createProjectContext({
-          projectRoot: config.projectRoot || '.',
-          tsconfig: config.tsconfig
-        });
-        
-        const analysisOptions = {
-          ...config.analysisOptions,
-          maxDepth: entryPointConfig.maxDepth || config.maxDepth || 10
-        };
-        
-        const analyzer = new CallGraphAnalyzer(context, analysisOptions);
-        const entryPoint = `${entryPointConfig.file}#${entryPointConfig.function}`;
-        
-        if (entryPointConfig.className) {
-          entryPoint.replace(`#${entryPointConfig.function}`, `#${entryPointConfig.className}.${entryPointConfig.function}`);
+
+    await Promise.all(
+      batch.map(async (entryPointConfig: any) => {
+        try {
+          const context = createProjectContext({
+            projectRoot: config.projectRoot || '.',
+            tsconfig: config.tsconfig,
+          });
+
+          const analysisOptions = {
+            ...config.analysisOptions,
+            maxDepth: entryPointConfig.maxDepth || config.maxDepth || 10,
+          };
+
+          const analyzer = new CallGraphAnalyzer(context, analysisOptions);
+          const entryPoint = `${entryPointConfig.file}#${entryPointConfig.function}`;
+
+          if (entryPointConfig.className) {
+            entryPoint.replace(
+              `#${entryPointConfig.function}`,
+              `#${entryPointConfig.className}.${entryPointConfig.function}`
+            );
+          }
+
+          const callGraph = await analyzer.analyzeFromEntryPoint(entryPoint);
+
+          const outputFile = path.join(
+            options.outputDir,
+            entryPointConfig.output || `${entryPointConfig.function}.json`
+          );
+          const output = formatOutput(callGraph, entryPointConfig.format || 'json', {
+            includeMetadata: true,
+            includeMetrics: config.includeMetrics,
+            prettify: true,
+          });
+
+          await saveOutput(output, outputFile);
+          logger.debug(` Completed: ${entryPoint} -> ${outputFile}`);
+        } catch (error) {
+          logger.warn(` Failed: ${entryPointConfig.file}#${entryPointConfig.function}`, error);
         }
-        
-        const callGraph = await analyzer.analyzeFromEntryPoint(entryPoint);
-        
-        const outputFile = path.join(options.outputDir, entryPointConfig.output || `${entryPointConfig.function}.json`);
-        const output = formatOutput(callGraph, entryPointConfig.format || 'json', {
-          includeMetadata: true,
-          includeMetrics: config.includeMetrics,
-          prettify: true
-        });
-        
-        await saveOutput(output, outputFile);
-        logger.debug(` Completed: ${entryPoint} -> ${outputFile}`);
-        
-      } catch (error) {
-        logger.warn(` Failed: ${entryPointConfig.file}#${entryPointConfig.function}`, error);
-      }
-    }));
+      })
+    );
   }
-  
+
   logger.success(`Batch analysis complete. Results in: ${options.outputDir}`);
 }
 
 async function validateCommand(options: any): Promise<void> {
   const context = createProjectContext(options);
   const analyzer = new EntryPointAnalyzer(context);
-  
+
   logger.progress(`Validating entry point: ${options.entry}`);
-  
+
   const result = await analyzer.validateEntryPoint(options.entry);
-  
+
   if (result.isValid) {
     logger.success(' Entry point is valid');
     if (result.location) {
@@ -287,7 +303,7 @@ async function validateCommand(options: any): Promise<void> {
   }
 }
 
-async function interactiveCommand(options: any): Promise<void> {
+async function interactiveCommand(_options: any): Promise<void> {
   // This would require additional dependencies like inquirer
   // For now, just show a message
   console.log('Interactive mode is not yet implemented.');
@@ -298,20 +314,20 @@ async function interactiveCommand(options: any): Promise<void> {
 function createProjectContext(options: any): ProjectContext {
   const projectRoot = path.resolve(options.projectRoot || '.');
   let tsConfigPath = options.tsconfig;
-  
+
   if (!tsConfigPath) {
     const defaultTsConfig = path.join(projectRoot, 'tsconfig.json');
     if (fs.existsSync(defaultTsConfig)) {
       tsConfigPath = defaultTsConfig;
     }
   }
-  
+
   return {
     rootPath: projectRoot,
     tsConfigPath,
     packageJsonPath: path.join(projectRoot, 'package.json'),
     sourcePatterns: ['src/**/*.ts', 'lib/**/*.ts'],
-    excludePatterns: ['node_modules/**', '**/*.test.ts', '**/*.spec.ts']
+    excludePatterns: ['node_modules/**', '**/*.test.ts', '**/*.spec.ts'],
   };
 }
 
@@ -322,17 +338,17 @@ function createAnalysisOptions(options: any): CallGraphAnalysisOptions {
     includeTestFiles: options.includeTests || false,
     followImports: true,
     analyzeCallbacks: !options.noCallbacks,
-    collectMetrics: options.metrics || false
+    collectMetrics: options.metrics || false,
   };
-  
+
   if (options.exclude) {
     analysisOptions.excludePatterns = options.exclude.map((pattern: string) => new RegExp(pattern));
   }
-  
+
   if (options.include) {
     analysisOptions.includePatterns = options.include.map((pattern: string) => new RegExp(pattern));
   }
-  
+
   return analysisOptions;
 }
 
@@ -350,7 +366,6 @@ function formatOutput(callGraph: any, format: OutputFormat, options: any): strin
 }
 
 function formatEntryPointsAsYaml(entryPoints: any[]): string {
-  const yaml = require('js-yaml');
   return yaml.dump({ entryPoints }, { indent: 2 });
 }
 
@@ -359,7 +374,7 @@ async function saveOutput(content: string, filePath: string): Promise<void> {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-  
+
   fs.writeFileSync(filePath, content, 'utf-8');
 }
 
@@ -372,7 +387,7 @@ function handleError(error: any): void {
   } else {
     logger.error('Unexpected error:', error);
   }
-  
+
   process.exit(1);
 }
 
@@ -382,7 +397,7 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', error => {
   logger.error('Uncaught Exception:', error);
   process.exit(1);
 });

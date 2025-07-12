@@ -2,7 +2,7 @@ import { CallGraph, FormatterOptions } from '../types/CallGraph';
 
 export class JsonFormatter {
   format(callGraph: CallGraph, options: FormatterOptions = { format: 'json' }): string {
-    const output: any = {};
+    const output: Record<string, unknown> = {};
 
     // Always include metadata
     if (options.includeMetadata !== false) {
@@ -27,24 +27,30 @@ export class JsonFormatter {
     }
   }
 
-  private generateStatistics(callGraph: CallGraph): any {
+  private generateStatistics(callGraph: CallGraph): Record<string, unknown> {
     const { nodes, edges } = callGraph;
-    
+
     // Basic counts
     const totalNodes = nodes.length;
     const totalEdges = edges.length;
-    
+
     // Node type distribution
-    const nodeTypes = nodes.reduce((acc, node) => {
-      acc[node.type] = (acc[node.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const nodeTypes = nodes.reduce(
+      (acc, node) => {
+        acc[node.type] = (acc[node.type] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     // Edge type distribution
-    const edgeTypes = edges.reduce((acc, edge) => {
-      acc[edge.type] = (acc[edge.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const edgeTypes = edges.reduce(
+      (acc, edge) => {
+        acc[edge.type] = (acc[edge.type] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     // Async function count
     const asyncFunctions = nodes.filter(node => node.async).length;
@@ -71,7 +77,7 @@ export class JsonFormatter {
           nodeId,
           functionName: node?.name || 'unknown',
           callCount,
-          filePath: node?.filePath
+          filePath: node?.filePath,
         };
       });
 
@@ -79,26 +85,33 @@ export class JsonFormatter {
     const depthCounts = this.calculateDepthDistribution(callGraph);
 
     // File distribution
-    const fileDistribution = nodes.reduce((acc, node) => {
-      const fileName = node.filePath.split('/').pop() || 'unknown';
-      acc[fileName] = (acc[fileName] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const fileDistribution = nodes.reduce(
+      (acc, node) => {
+        const fileName = node.filePath.split('/').pop() || 'unknown';
+        acc[fileName] = (acc[fileName] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     return {
       overview: {
         totalNodes,
         totalEdges,
         asyncFunctions,
-        averageFanOut: fanOut.size > 0 ? Array.from(fanOut.values()).reduce((a, b) => a + b, 0) / fanOut.size : 0,
-        averageFanIn: fanIn.size > 0 ? Array.from(fanIn.values()).reduce((a, b) => a + b, 0) / fanIn.size : 0,
-        maxDepth: Math.max(...depthCounts.map(d => d.depth), 0)
+        averageFanOut:
+          fanOut.size > 0
+            ? Array.from(fanOut.values()).reduce((a, b) => a + b, 0) / fanOut.size
+            : 0,
+        averageFanIn:
+          fanIn.size > 0 ? Array.from(fanIn.values()).reduce((a, b) => a + b, 0) / fanIn.size : 0,
+        maxDepth: Math.max(...depthCounts.map(d => d.depth), 0),
       },
       distribution: {
         nodeTypes,
         edgeTypes,
         depthCounts,
-        fileDistribution
+        fileDistribution,
       },
       hotspots,
       complexity: {
@@ -110,16 +123,18 @@ export class JsonFormatter {
               nodeId,
               functionName: node?.name || 'unknown',
               fanOut: count,
-              filePath: node?.filePath
+              filePath: node?.filePath,
             };
           }),
-        functionsWithHighFanIn: hotspots.filter(h => h.callCount > 3)
-      }
+        functionsWithHighFanIn: hotspots.filter(h => h.callCount > 3),
+      },
     };
   }
 
-  private calculateDepthDistribution(callGraph: CallGraph): Array<{ depth: number; count: number }> {
-    const { nodes, edges, entryPointId } = callGraph;
+  private calculateDepthDistribution(
+    callGraph: CallGraph
+  ): Array<{ depth: number; count: number }> {
+    const { edges, entryPointId } = callGraph;
     const depths = new Map<string, number>();
     const visited = new Set<string>();
 
@@ -129,17 +144,17 @@ export class JsonFormatter {
 
     while (queue.length > 0) {
       const { nodeId, depth } = queue.shift()!;
-      
+
       if (visited.has(nodeId)) continue;
       visited.add(nodeId);
 
       // Find outgoing edges
       const outgoingEdges = edges.filter(edge => edge.source === nodeId);
-      
+
       for (const edge of outgoingEdges) {
         const targetDepth = depth + 1;
         const currentDepth = depths.get(edge.target);
-        
+
         // Only update if we found a shorter path or haven't visited this node
         if (currentDepth === undefined || targetDepth < currentDepth) {
           depths.set(edge.target, targetDepth);
@@ -182,13 +197,13 @@ export class JsonFormatter {
         id: node.id,
         name: node.name,
         type: node.type,
-        async: node.async
+        async: node.async,
       })),
       calls: callGraph.edges.map(edge => ({
         from: edge.source,
         to: edge.target,
-        type: edge.type
-      }))
+        type: edge.type,
+      })),
     };
 
     return JSON.stringify(output, null, 2);
@@ -199,11 +214,11 @@ export class JsonFormatter {
       metadata: callGraph.metadata,
       entryPoint: {
         id: callGraph.entryPointId,
-        details: callGraph.nodes.find(n => n.id === callGraph.entryPointId)
+        details: callGraph.nodes.find(n => n.id === callGraph.entryPointId),
       },
       nodes: callGraph.nodes,
       edges: callGraph.edges,
-      statistics: this.generateStatistics(callGraph)
+      statistics: this.generateStatistics(callGraph),
     };
 
     return JSON.stringify(output, null, 2);
@@ -211,29 +226,29 @@ export class JsonFormatter {
 
   private formatCompact(callGraph: CallGraph): string {
     const nodeMap = new Map(callGraph.nodes.map((node, index) => [node.id, index]));
-    
+
     const output = {
       meta: {
         generated: callGraph.metadata.generatedAt,
         entry: callGraph.entryPointId,
         stats: {
           nodes: callGraph.nodes.length,
-          edges: callGraph.edges.length
-        }
+          edges: callGraph.edges.length,
+        },
       },
       n: callGraph.nodes.map(node => [
         node.name,
         node.type,
         node.async ? 1 : 0,
         node.filePath,
-        node.line
+        node.line,
       ]),
       e: callGraph.edges.map(edge => [
         nodeMap.get(edge.source),
         nodeMap.get(edge.target),
         edge.type,
-        edge.line
-      ])
+        edge.line,
+      ]),
     };
 
     return JSON.stringify(output);
@@ -245,7 +260,7 @@ export class JsonFormatter {
   validate(jsonString: string): { isValid: boolean; error?: string } {
     try {
       const parsed = JSON.parse(jsonString);
-      
+
       // Basic structure validation
       if (!parsed.nodes || !Array.isArray(parsed.nodes)) {
         return { isValid: false, error: 'Missing or invalid nodes array' };
@@ -274,11 +289,10 @@ export class JsonFormatter {
       }
 
       return { isValid: true };
-
     } catch (error) {
-      return { 
-        isValid: false, 
-        error: `JSON parsing error: ${error instanceof Error ? error.message : String(error)}` 
+      return {
+        isValid: false,
+        error: `JSON parsing error: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   }

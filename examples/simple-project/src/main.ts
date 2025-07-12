@@ -1,10 +1,11 @@
-import { UserService } from './UserService';
+import { UserService } from './services/UserService';
 
 export async function main(): Promise<void> {
   const userService = new UserService();
   
   console.log('Creating new user...');
-  const user = await userService.createUser('John Doe', 'john@example.com');
+  const userData = { name: 'John Doe', email: 'john@example.com' };
+  const user = await userService.createUser(userData);
   
   console.log('Retrieving user...');
   const retrievedUser = await userService.getUserById(user.id);

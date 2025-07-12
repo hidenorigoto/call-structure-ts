@@ -278,7 +278,7 @@ export class MermaidFormatter {
       const fileName = this.getFileName(filePath);
       const subgraphId = `sg${subgraphIndex++}`;
 
-      lines.push(`    subgraph ${subgraphId}["=� ${fileName}"]`);
+      lines.push(`    subgraph ${subgraphId}["📁 ${fileName}"]`);
 
       fileNodes.forEach((node, index) => {
         const safeId = this.generateSafeNodeId(node, index);

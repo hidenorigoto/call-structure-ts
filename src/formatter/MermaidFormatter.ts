@@ -61,7 +61,7 @@ export class MermaidFormatter {
 
   private nodeMap = new Map<string, string>();
 
-  private generateEdgeDefinitions(edges: CallGraph['edges'], nodes: CallGraph['nodes']): string[] {
+  private generateEdgeDefinitions(edges: CallGraph['edges'], _nodes: CallGraph['nodes']): string[] {
     const lines: string[] = [];
     const edgeMap = new Map<string, number>();
 
@@ -337,7 +337,7 @@ export class MermaidFormatter {
     let stepNumber = 1;
     const processedEdges = new Set<string>();
 
-    const addCallSequence = (nodeId: string, depth: number = 0) => {
+    const addCallSequence = (nodeId: string, depth: number = 0): void => {
       if (depth > 5) return; // Prevent infinite recursion
 
       const outgoingEdges = edges.filter(
@@ -432,7 +432,7 @@ export class MermaidFormatter {
         line.includes('-.->') ||
         line.includes('..->') ||
         line.includes('==>');
-      const hasNodeDef = /^\s*\w+[\[\(].+[\]\)]/.test(line);
+      const hasNodeDef = /^\s*\w+[[(].+[\])]/.test(line);
 
       if (!hasArrow && !hasNodeDef && line.length > 0) {
         return { isValid: false, error: `Invalid syntax at line ${i + 1}: ${line}` };

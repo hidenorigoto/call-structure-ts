@@ -134,7 +134,7 @@ export class JsonFormatter {
   private calculateDepthDistribution(
     callGraph: CallGraph
   ): Array<{ depth: number; count: number }> {
-    const { nodes, edges, entryPointId } = callGraph;
+    const { edges, entryPointId } = callGraph;
     const depths = new Map<string, number>();
     const visited = new Set<string>();
 

@@ -9,7 +9,6 @@ import {
 } from '../types/CallGraph';
 import { logger } from '../utils/logger';
 import * as path from 'path';
-import * as fs from 'fs';
 
 export class EntryPointAnalyzer {
   private project: Project;

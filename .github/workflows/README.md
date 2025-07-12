@@ -7,11 +7,11 @@ This workflow runs automatically on every pull request to the `main` branch and 
 ### Jobs
 
 **1. Code Quality & Tests**
-- Runs on Ubuntu with Node.js 18.x and 20.x (matrix)
+- Runs on Ubuntu with Node.js 22.x and 24.x (matrix)
 - ESLint code quality checks (`npm run lint`)
 - TypeScript type checking (`npm run type-check`)
 - Jest test suite (`npm test`)
-- Coverage report generation and upload (Node 20.x only)
+- Coverage report generation and upload (Node 24.x only)
 
 **2. Build Check**
 - Verifies the project builds successfully (`npm run build`)
@@ -20,8 +20,8 @@ This workflow runs automatically on every pull request to the `main` branch and 
 ### Status Checks
 
 Each step shows as a separate status check in the PR:
-- `quality-checks (18.x)` - Quality checks on Node 18
-- `quality-checks (20.x)` - Quality checks on Node 20  
+- `quality-checks (22.x)` - Quality checks on Node 22
+- `quality-checks (24.x)` - Quality checks on Node 24 (LTS)
 - `build-check` - Build verification
 
 ### Branch Protection Integration

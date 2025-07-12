@@ -15,6 +15,7 @@ import {
 import { logger, LogLevel } from '../utils/logger';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as yaml from 'js-yaml';
 
 const program = new Command();
 
@@ -205,7 +206,7 @@ async function batchCommand(options: any): Promise<void> {
   const configContent = fs.readFileSync(options.config, 'utf-8');
   const config =
     options.config.endsWith('.yaml') || options.config.endsWith('.yml')
-      ? require('js-yaml').load(configContent)
+      ? yaml.load(configContent)
       : JSON.parse(configContent);
 
   if (!config.entryPoints || !Array.isArray(config.entryPoints)) {
@@ -302,7 +303,7 @@ async function validateCommand(options: any): Promise<void> {
   }
 }
 
-async function interactiveCommand(options: any): Promise<void> {
+async function interactiveCommand(_options: any): Promise<void> {
   // This would require additional dependencies like inquirer
   // For now, just show a message
   console.log('Interactive mode is not yet implemented.');
@@ -365,7 +366,6 @@ function formatOutput(callGraph: any, format: OutputFormat, options: any): strin
 }
 
 function formatEntryPointsAsYaml(entryPoints: any[]): string {
-  const yaml = require('js-yaml');
   return yaml.dump({ entryPoints }, { indent: 2 });
 }
 

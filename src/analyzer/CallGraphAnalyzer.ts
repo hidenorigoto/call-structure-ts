@@ -9,8 +9,6 @@ import {
   ArrowFunction,
   FunctionExpression,
   ConstructorDeclaration,
-  GetAccessorDeclaration,
-  SetAccessorDeclaration,
   PropertyAccessExpression,
   Identifier,
 } from 'ts-morph';

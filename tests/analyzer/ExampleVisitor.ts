@@ -32,6 +32,11 @@ export class NodeCountVisitor extends ASTVisitor<number> {
     // For other nodes, just count children
     return this.visitChildren(node).reduce((a, b) => a + b, 0);
   }
+  
+  protected override visitSourceFile(node: Node): number {
+    // For source files, just count children
+    return this.visitChildren(node).reduce((a, b) => a + b, 0);
+  }
 }
 
 /**
@@ -91,6 +96,11 @@ export class FunctionNameCollector extends ASTVisitor<string[]> {
     const childNames = this.visitChildren(node).flat();
     return [name, ...childNames];
   }
+  
+  protected override visitSourceFile(node: Node): string[] {
+    // For source files, just collect from children
+    return this.visitChildren(node).flat();
+  }
 }
 
 /**
@@ -123,6 +133,12 @@ export class MaxDepthVisitor extends ASTVisitor<number> {
   }
 
   protected visitNode(node: Node): number {
+    this.updateMaxDepth();
+    const childDepths = this.visitChildren(node);
+    return Math.max(this.getCurrentDepth(), ...childDepths, 0);
+  }
+  
+  protected override visitSourceFile(node: Node): number {
     this.updateMaxDepth();
     const childDepths = this.visitChildren(node);
     return Math.max(this.getCurrentDepth(), ...childDepths, 0);

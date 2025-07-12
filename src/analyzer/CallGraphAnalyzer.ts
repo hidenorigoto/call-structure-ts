@@ -9,8 +9,6 @@ import {
   ArrowFunction,
   FunctionExpression,
   ConstructorDeclaration,
-  GetAccessorDeclaration,
-  SetAccessorDeclaration,
   PropertyAccessExpression,
   Identifier,
 } from 'ts-morph';
@@ -47,7 +45,7 @@ export class CallGraphAnalyzer {
       collectMetrics: options.collectMetrics ?? false,
     };
 
-    const projectOptions: any = {
+    const projectOptions: { skipAddingFilesFromTsConfig: boolean; tsConfigFilePath?: string } = {
       skipAddingFilesFromTsConfig: false,
     };
 

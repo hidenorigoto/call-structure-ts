@@ -9,7 +9,6 @@ import {
 } from '../types/CallGraph';
 import { logger } from '../utils/logger';
 import * as path from 'path';
-import * as fs from 'fs';
 
 export class EntryPointAnalyzer {
   private project: Project;
@@ -17,7 +16,7 @@ export class EntryPointAnalyzer {
 
   constructor(context: ProjectContext) {
     this.context = context;
-    const projectOptions: any = {
+    const projectOptions: { skipAddingFilesFromTsConfig: boolean; tsConfigFilePath?: string } = {
       skipAddingFilesFromTsConfig: false,
     };
 
@@ -394,7 +393,12 @@ export class EntryPointAnalyzer {
       // Check if file is in project source patterns
       if (this.context.sourcePatterns.length > 0) {
         const isInSource = this.context.sourcePatterns.some(pattern => {
-          const regex = new RegExp(pattern);
+          // Convert glob pattern to regex
+          const regexPattern = pattern
+            .replace(/\*\*/g, '.*')
+            .replace(/\*/g, '[^/]*')
+            .replace(/\./g, '\\.');
+          const regex = new RegExp(regexPattern);
           return regex.test(filePath);
         });
         if (!isInSource) {
@@ -405,8 +409,14 @@ export class EntryPointAnalyzer {
       // Check exclude patterns
       if (this.context.excludePatterns.length > 0) {
         const isExcluded = this.context.excludePatterns.some(pattern => {
-          const regex = new RegExp(pattern);
-          return regex.test(filePath);
+          if (pattern.startsWith('/') || pattern.endsWith('$')) {
+            // Treat as regex pattern
+            const regex = new RegExp(pattern);
+            return regex.test(filePath);
+          } else {
+            // Treat as simple string inclusion
+            return filePath.includes(pattern);
+          }
         });
         if (isExcluded) {
           return false;

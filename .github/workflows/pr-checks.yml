@@ -79,3 +79,19 @@ jobs:
             exit 1
           fi
           echo "Build successful: All artifacts created"
+
+  # Summary job that depends on all other jobs
+  all-checks:
+    name: All Checks Complete
+    runs-on: ubuntu-latest
+    needs: [quality-checks, build-check]
+    if: always()
+    
+    steps:
+      - name: Check all job statuses
+        run: |
+          if [[ "${{ needs.quality-checks.result }}" != "success" || "${{ needs.build-check.result }}" != "success" ]]; then
+            echo "One or more checks failed"
+            exit 1
+          fi
+          echo "All checks passed successfully"

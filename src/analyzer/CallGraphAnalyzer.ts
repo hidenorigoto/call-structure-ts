@@ -22,9 +22,11 @@ import {
   ProjectContext,
 } from '../types/CallGraph';
 import { logger } from '../utils/logger';
+import { ProjectLoader } from './ProjectLoader';
 
 export class CallGraphAnalyzer {
   private project: Project;
+  private projectLoader: ProjectLoader;
   private context: ProjectContext;
   private options: Required<CallGraphAnalysisOptions>;
   private visitedNodes = new Set<string>();
@@ -45,6 +47,11 @@ export class CallGraphAnalyzer {
       collectMetrics: options.collectMetrics ?? false,
     };
 
+    // Use ProjectLoader instead of creating Project directly
+    this.projectLoader = new ProjectLoader();
+    
+    // Load project synchronously in constructor for backward compatibility
+    // In a real implementation, this should be async
     const projectOptions: { skipAddingFilesFromTsConfig: boolean; tsConfigFilePath?: string } = {
       skipAddingFilesFromTsConfig: false,
     };
@@ -53,6 +60,8 @@ export class CallGraphAnalyzer {
       projectOptions.tsConfigFilePath = context.tsConfigPath;
     }
 
+    // For now, keep direct Project creation for backward compatibility
+    // TODO: Refactor to use async initialization
     this.project = new Project(projectOptions);
 
     logger.debug(`Initialized CallGraphAnalyzer with context:`, context);

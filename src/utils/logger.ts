@@ -4,7 +4,7 @@ export enum LogLevel {
   DEBUG = 0,
   INFO = 1,
   WARN = 2,
-  ERROR = 3
+  ERROR = 3,
 }
 
 export class Logger {
@@ -12,6 +12,10 @@ export class Logger {
 
   setLevel(level: LogLevel): void {
     this.level = level;
+  }
+
+  getLevel(): LogLevel {
+    return this.level;
   }
 
   debug(message: string, ...args: any[]): void {
@@ -43,7 +47,7 @@ export class Logger {
   }
 
   progress(message: string, ...args: any[]): void {
-    console.log(chalk.cyan('ó'), message, ...args);
+    console.log(chalk.cyan('ï¿½'), message, ...args);
   }
 }
 

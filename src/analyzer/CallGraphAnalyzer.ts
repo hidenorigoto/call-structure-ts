@@ -1,10 +1,10 @@
-import { 
-  Project, 
-  SourceFile, 
-  Node, 
-  SyntaxKind, 
-  CallExpression, 
-  FunctionDeclaration, 
+import {
+  Project,
+  SourceFile,
+  Node,
+  SyntaxKind,
+  CallExpression,
+  FunctionDeclaration,
   MethodDeclaration,
   ArrowFunction,
   FunctionExpression,
@@ -12,16 +12,16 @@ import {
   GetAccessorDeclaration,
   SetAccessorDeclaration,
   PropertyAccessExpression,
-  Identifier
+  Identifier,
 } from 'ts-morph';
-import { 
-  CallGraph, 
-  CallGraphNode, 
-  CallGraphEdge, 
-  CallGraphAnalysisOptions, 
+import {
+  CallGraph,
+  CallGraphNode,
+  CallGraphEdge,
+  CallGraphAnalysisOptions,
   CallGraphMetadata,
   CallGraphError,
-  ProjectContext
+  ProjectContext,
 } from '../types/CallGraph';
 import { logger } from '../utils/logger';
 
@@ -44,17 +44,17 @@ export class CallGraphAnalyzer {
       includePatterns: options.includePatterns ?? [],
       followImports: options.followImports ?? true,
       analyzeCallbacks: options.analyzeCallbacks ?? true,
-      collectMetrics: options.collectMetrics ?? false
+      collectMetrics: options.collectMetrics ?? false,
     };
 
     const projectOptions: any = {
-      skipAddingFilesFromTsConfig: false
+      skipAddingFilesFromTsConfig: false,
     };
-    
+
     if (context.tsConfigPath) {
       projectOptions.tsConfigFilePath = context.tsConfigPath;
     }
-    
+
     this.project = new Project(projectOptions);
 
     logger.debug(`Initialized CallGraphAnalyzer with context:`, context);
@@ -73,11 +73,11 @@ export class CallGraphAnalyzer {
 
       // Parse entry point
       const { filePath, functionName, className } = this.parseEntryPoint(entryPoint);
-      
+
       // Find and analyze entry point
       const sourceFile = this.getSourceFile(filePath);
       const entryNode = this.findEntryPointNode(sourceFile, functionName, className);
-      
+
       if (!entryNode) {
         throw new CallGraphError(
           `Entry point not found: ${functionName}${className ? ` in class ${className}` : ''}`,
@@ -93,7 +93,9 @@ export class CallGraphAnalyzer {
       await this.analyzeNode(entryNode, 0);
 
       const analysisTime = Date.now() - startTime;
-      logger.success(`Analysis completed in ${analysisTime}ms. Found ${this.nodes.size} nodes and ${this.edges.length} edges.`);
+      logger.success(
+        `Analysis completed in ${analysisTime}ms. Found ${this.nodes.size} nodes and ${this.edges.length} edges.`
+      );
 
       // Build result
       const metadata: CallGraphMetadata = {
@@ -103,16 +105,15 @@ export class CallGraphAnalyzer {
         projectRoot: this.context.rootPath,
         tsConfigPath: this.context.tsConfigPath || undefined,
         totalFiles: this.project.getSourceFiles().length,
-        analysisTimeMs: analysisTime
+        analysisTimeMs: analysisTime,
       };
 
       return {
         metadata,
         nodes: Array.from(this.nodes.values()),
         edges: this.edges,
-        entryPointId: entryNodeId
+        entryPointId: entryNodeId,
       };
-
     } catch (error) {
       const analysisTime = Date.now() - startTime;
       logger.error(`Analysis failed after ${analysisTime}ms:`, error);
@@ -120,12 +121,16 @@ export class CallGraphAnalyzer {
     }
   }
 
-  private parseEntryPoint(entryPoint: string): { filePath: string; functionName: string; className?: string } {
+  private parseEntryPoint(entryPoint: string): {
+    filePath: string;
+    functionName: string;
+    className?: string;
+  } {
     // Support formats:
     // - "path/to/file.ts#functionName"
     // - "path/to/file.ts#ClassName.methodName"
     const [filePath, functionRef] = entryPoint.split('#');
-    
+
     if (!filePath || !functionRef) {
       throw new CallGraphError(
         `Invalid entry point format: ${entryPoint}. Expected format: "path/to/file.ts#functionName" or "path/to/file.ts#ClassName.methodName"`,
@@ -159,17 +164,18 @@ export class CallGraphAnalyzer {
   }
 
   private findEntryPointNode(
-    sourceFile: SourceFile, 
-    functionName: string, 
+    sourceFile: SourceFile,
+    functionName: string,
     className?: string
   ): Node | undefined {
     if (className) {
       // Look for class method
       const classDecl = sourceFile.getClass(className);
       if (classDecl) {
-        const method = classDecl.getMethod(functionName) || 
-                     classDecl.getGetAccessor(functionName) ||
-                     classDecl.getSetAccessor(functionName);
+        const method =
+          classDecl.getMethod(functionName) ||
+          classDecl.getGetAccessor(functionName) ||
+          classDecl.getSetAccessor(functionName);
         if (method) return method;
 
         // Check constructor
@@ -247,11 +253,17 @@ export class CallGraphAnalyzer {
     }
   }
 
-  private async analyzeCallExpression(callExpr: CallExpression, sourceNodeId: string, depth: number): Promise<void> {
+  private async analyzeCallExpression(
+    callExpr: CallExpression,
+    sourceNodeId: string,
+    depth: number
+  ): Promise<void> {
     try {
       const targetNode = this.resolveCallTarget(callExpr);
       if (!targetNode) {
-        logger.debug(`Could not resolve call target for expression at line ${callExpr.getStartLineNumber()}`);
+        logger.debug(
+          `Could not resolve call target for expression at line ${callExpr.getStartLineNumber()}`
+        );
         return;
       }
 
@@ -261,7 +273,7 @@ export class CallGraphAnalyzer {
       }
 
       const targetNodeId = this.generateNodeId(targetNode);
-      
+
       // Create edge
       const edge: CallGraphEdge = {
         id: `${sourceNodeId}->${targetNodeId}-${this.edges.length}`,
@@ -270,7 +282,7 @@ export class CallGraphAnalyzer {
         type: this.determineCallType(callExpr),
         line: callExpr.getStartLineNumber(),
         column: callExpr.getStart() - callExpr.getStartLinePos(),
-        argumentTypes: this.extractArgumentTypes(callExpr)
+        argumentTypes: this.extractArgumentTypes(callExpr),
       };
 
       this.edges.push(edge);
@@ -278,9 +290,11 @@ export class CallGraphAnalyzer {
 
       // Recursively analyze target
       await this.analyzeNode(targetNode, depth);
-
     } catch (error) {
-      logger.warn(`Failed to analyze call expression at line ${callExpr.getStartLineNumber()}:`, error);
+      logger.warn(
+        `Failed to analyze call expression at line ${callExpr.getStartLineNumber()}:`,
+        error
+      );
     }
   }
 
@@ -298,7 +312,7 @@ export class CallGraphAnalyzer {
     }
 
     // TODO: Handle other cases like computed property access, etc.
-    
+
     return undefined;
   }
 
@@ -311,7 +325,7 @@ export class CallGraphAnalyzer {
 
     const declaration = declarations[0];
     if (!declaration) return undefined;
-    
+
     // If it's a variable declaration, check if it has a function initializer
     if (Node.isVariableDeclaration(declaration)) {
       const initializer = declaration.getInitializer();
@@ -335,7 +349,7 @@ export class CallGraphAnalyzer {
     // Get the type of the object being accessed
     const objectType = objectExpr.getType();
     const methodSymbol = objectType.getProperty(nameNode.getText());
-    
+
     if (!methodSymbol) return undefined;
 
     const declarations = methodSymbol.getDeclarations();
@@ -363,13 +377,13 @@ export class CallGraphAnalyzer {
   }
 
   private async analyzeCallbackFunction(
-    callbackNode: Node, 
-    parentNodeId: string, 
-    edgeType: CallGraphEdge['type'], 
+    callbackNode: Node,
+    parentNodeId: string,
+    edgeType: CallGraphEdge['type'],
     depth: number
   ): Promise<void> {
     const callbackNodeId = this.generateNodeId(callbackNode);
-    
+
     // Create edge from parent to callback
     const edge: CallGraphEdge = {
       id: `${parentNodeId}->${callbackNodeId}-${this.edges.length}`,
@@ -377,11 +391,11 @@ export class CallGraphAnalyzer {
       target: callbackNodeId,
       type: edgeType,
       line: callbackNode.getStartLineNumber(),
-      column: callbackNode.getStart() - callbackNode.getStartLinePos()
+      column: callbackNode.getStart() - callbackNode.getStartLinePos(),
     };
 
     this.edges.push(edge);
-    
+
     // Analyze the callback function
     await this.analyzeNode(callbackNode, depth);
   }
@@ -400,7 +414,7 @@ export class CallGraphAnalyzer {
         type: 'function',
         async: node.isAsync(),
         parameters: this.extractParameters(node),
-        returnType: node.getReturnType().getText()
+        returnType: node.getReturnType().getText(),
       };
     }
 
@@ -419,7 +433,7 @@ export class CallGraphAnalyzer {
         visibility: this.getVisibility(node),
         parameters: this.extractParameters(node),
         returnType: node.getReturnType().getText(),
-        ...(className && { className })
+        ...(className && { className }),
       };
     }
 
@@ -433,7 +447,7 @@ export class CallGraphAnalyzer {
         type: 'arrow',
         async: node.isAsync(),
         parameters: this.extractParameters(node),
-        returnType: node.getReturnType().getText()
+        returnType: node.getReturnType().getText(),
       };
     }
 
@@ -447,7 +461,7 @@ export class CallGraphAnalyzer {
         type: 'function',
         async: node.isAsync(),
         parameters: this.extractParameters(node),
-        returnType: node.getReturnType().getText()
+        returnType: node.getReturnType().getText(),
       };
     }
 
@@ -464,21 +478,28 @@ export class CallGraphAnalyzer {
         async: false,
         parameters: this.extractParameters(node),
         returnType: 'void',
-        ...(className && { className })
+        ...(className && { className }),
       };
     }
 
     return undefined;
   }
 
-  private extractParameters(node: FunctionDeclaration | MethodDeclaration | ArrowFunction | FunctionExpression | ConstructorDeclaration): CallGraphNode['parameters'] {
+  private extractParameters(
+    node:
+      | FunctionDeclaration
+      | MethodDeclaration
+      | ArrowFunction
+      | FunctionExpression
+      | ConstructorDeclaration
+  ): CallGraphNode['parameters'] {
     return node.getParameters().map(param => {
       const defaultValue = param.getInitializer()?.getText();
       return {
         name: param.getName(),
         type: param.getType().getText(),
         optional: param.isOptional(),
-        ...(defaultValue && { defaultValue })
+        ...(defaultValue && { defaultValue }),
       };
     });
   }
@@ -525,7 +546,7 @@ export class CallGraphAnalyzer {
     if (Node.isFunctionDeclaration(node) || Node.isMethodDeclaration(node)) {
       const name = node.getName();
       const parent = node.getParent();
-      
+
       if (Node.isClassDeclaration(parent)) {
         return `${filePath}#${parent.getName()}.${name}`;
       }
@@ -543,13 +564,15 @@ export class CallGraphAnalyzer {
   }
 
   private isFunctionLikeNode(node: Node): boolean {
-    return Node.isFunctionDeclaration(node) ||
-           Node.isMethodDeclaration(node) ||
-           Node.isArrowFunction(node) ||
-           Node.isFunctionExpression(node) ||
-           Node.isConstructorDeclaration(node) ||
-           Node.isGetAccessorDeclaration(node) ||
-           Node.isSetAccessorDeclaration(node);
+    return (
+      Node.isFunctionDeclaration(node) ||
+      Node.isMethodDeclaration(node) ||
+      Node.isArrowFunction(node) ||
+      Node.isFunctionExpression(node) ||
+      Node.isConstructorDeclaration(node) ||
+      Node.isGetAccessorDeclaration(node) ||
+      Node.isSetAccessorDeclaration(node)
+    );
   }
 
   private shouldSkipNode(node: Node): boolean {
@@ -585,9 +608,11 @@ export class CallGraphAnalyzer {
   }
 
   private isTestFile(filePath: string): boolean {
-    return /\.(test|spec)\.(ts|js)$/.test(filePath) || 
-           filePath.includes('/__tests__/') ||
-           filePath.includes('/test/') ||
-           filePath.includes('/tests/');
+    return (
+      /\.(test|spec)\.(ts|js)$/.test(filePath) ||
+      filePath.includes('/__tests__/') ||
+      filePath.includes('/test/') ||
+      filePath.includes('/tests/')
+    );
   }
 }

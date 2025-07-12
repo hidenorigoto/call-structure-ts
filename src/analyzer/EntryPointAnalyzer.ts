@@ -1,11 +1,11 @@
 import { Project, SourceFile, Node } from 'ts-morph';
 import { CallGraphAnalyzer } from './CallGraphAnalyzer';
-import { 
-  CallGraph, 
-  EntryPointLocation, 
-  ProjectContext, 
+import {
+  CallGraph,
+  EntryPointLocation,
+  ProjectContext,
   CallGraphAnalysisOptions,
-  CallGraphError
+  CallGraphError,
 } from '../types/CallGraph';
 import { logger } from '../utils/logger';
 import * as path from 'path';
@@ -18,13 +18,13 @@ export class EntryPointAnalyzer {
   constructor(context: ProjectContext) {
     this.context = context;
     const projectOptions: any = {
-      skipAddingFilesFromTsConfig: false
+      skipAddingFilesFromTsConfig: false,
     };
-    
+
     if (context.tsConfigPath) {
       projectOptions.tsConfigFilePath = context.tsConfigPath;
     }
-    
+
     this.project = new Project(projectOptions);
   }
 
@@ -50,7 +50,7 @@ export class EntryPointAnalyzer {
    * Analyze multiple entry points and generate call graphs
    */
   async analyzeMultipleEntryPoints(
-    entryPoints: string[], 
+    entryPoints: string[],
     options: CallGraphAnalysisOptions = {}
   ): Promise<Map<string, CallGraph>> {
     const results = new Map<string, CallGraph>();
@@ -83,7 +83,7 @@ export class EntryPointAnalyzer {
 
     for (const sourceFile of sourceFiles) {
       const filePath = sourceFile.getFilePath();
-      
+
       // Check if file matches any pattern
       const matchesPattern = patterns.some(pattern => {
         const regex = new RegExp(pattern);
@@ -125,8 +125,7 @@ export class EntryPointAnalyzer {
       }
 
       // Handlers
-      if (fileName.toLowerCase().includes('handler') || 
-          fileName.toLowerCase().includes('route')) {
+      if (fileName.toLowerCase().includes('handler') || fileName.toLowerCase().includes('route')) {
         const points = this.findHandlerFunctions(sourceFile);
         handlers.push(...points);
       }
@@ -144,7 +143,7 @@ export class EntryPointAnalyzer {
       controllers,
       handlers,
       mainFunctions,
-      exportedFunctions
+      exportedFunctions,
     };
   }
 
@@ -158,13 +157,13 @@ export class EntryPointAnalyzer {
   }> {
     try {
       const { filePath, functionName, className } = this.parseEntryPoint(entryPoint);
-      
+
       // Check if file exists
       const sourceFile = this.project.getSourceFile(filePath);
       if (!sourceFile) {
         return {
           isValid: false,
-          error: `Source file not found: ${filePath}`
+          error: `Source file not found: ${filePath}`,
         };
       }
 
@@ -173,7 +172,7 @@ export class EntryPointAnalyzer {
       if (!node) {
         return {
           isValid: false,
-          error: `Function ${functionName}${className ? ` in class ${className}` : ''} not found in ${filePath}`
+          error: `Function ${functionName}${className ? ` in class ${className}` : ''} not found in ${filePath}`,
         };
       }
 
@@ -182,14 +181,13 @@ export class EntryPointAnalyzer {
         location: {
           filePath,
           functionName,
-          className
-        }
+          className,
+        },
       };
-
     } catch (error) {
       return {
         isValid: false,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
@@ -207,7 +205,7 @@ export class EntryPointAnalyzer {
           filePath,
           functionName: name,
           className: undefined,
-          exportName: name
+          exportName: name,
         });
       }
     }
@@ -220,7 +218,7 @@ export class EntryPointAnalyzer {
         entryPoints.push({
           filePath,
           functionName: name,
-          className: undefined
+          className: undefined,
         });
       }
     }
@@ -238,7 +236,7 @@ export class EntryPointAnalyzer {
           filePath,
           functionName: methodName,
           className,
-          exportName: undefined
+          exportName: undefined,
         });
       }
 
@@ -249,7 +247,7 @@ export class EntryPointAnalyzer {
           filePath,
           functionName: 'constructor',
           className,
-          exportName: undefined
+          exportName: undefined,
         });
       }
     }
@@ -270,22 +268,23 @@ export class EntryPointAnalyzer {
 
       // Look for HTTP method-like methods
       const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
-      
+
       for (const method of cls.getMethods()) {
         const methodName = method.getName().toLowerCase();
-        
+
         // Check if method looks like an HTTP handler
-        if (httpMethods.some(httpMethod => methodName.includes(httpMethod)) ||
-            methodName.includes('handle') ||
-            methodName.includes('create') ||
-            methodName.includes('update') ||
-            methodName.includes('remove') ||
-            methodName.includes('list')) {
-          
+        if (
+          httpMethods.some(httpMethod => methodName.includes(httpMethod)) ||
+          methodName.includes('handle') ||
+          methodName.includes('create') ||
+          methodName.includes('update') ||
+          methodName.includes('remove') ||
+          methodName.includes('list')
+        ) {
           entryPoints.push({
             filePath,
             functionName: method.getName(),
-            className
+            className,
           });
         }
       }
@@ -304,15 +303,16 @@ export class EntryPointAnalyzer {
       const decl = declarations[0];
       if (Node.isFunctionDeclaration(decl)) {
         const funcName = name.toLowerCase();
-        if (funcName.includes('handler') ||
-            funcName.includes('handle') ||
-            funcName.includes('route') ||
-            funcName.includes('middleware')) {
-          
+        if (
+          funcName.includes('handler') ||
+          funcName.includes('handle') ||
+          funcName.includes('route') ||
+          funcName.includes('middleware')
+        ) {
           entryPoints.push({
             filePath,
             functionName: name,
-            exportName: name
+            exportName: name,
           });
         }
       }
@@ -327,14 +327,14 @@ export class EntryPointAnalyzer {
 
     // Look for main, start, init, bootstrap functions
     const mainPatterns = ['main', 'start', 'init', 'bootstrap', 'run', 'execute'];
-    
+
     const functions = sourceFile.getFunctions();
     for (const func of functions) {
       const name = func.getName();
       if (name && mainPatterns.includes(name.toLowerCase())) {
         entryPoints.push({
           filePath,
-          functionName: name
+          functionName: name,
         });
       }
     }
@@ -348,7 +348,7 @@ export class EntryPointAnalyzer {
           entryPoints.push({
             filePath,
             functionName: name,
-            exportName: name
+            exportName: name,
           });
         }
       }
@@ -369,7 +369,7 @@ export class EntryPointAnalyzer {
           filePath,
           functionName: name,
           className: undefined,
-          exportName: name
+          exportName: name,
         });
       }
     }
@@ -380,7 +380,7 @@ export class EntryPointAnalyzer {
   private getSourceFiles(): SourceFile[] {
     return this.project.getSourceFiles().filter(sf => {
       const filePath = sf.getFilePath();
-      
+
       // Skip node_modules
       if (filePath.includes('node_modules')) {
         return false;
@@ -417,9 +417,13 @@ export class EntryPointAnalyzer {
     });
   }
 
-  private parseEntryPoint(entryPoint: string): { filePath: string; functionName: string; className?: string } {
+  private parseEntryPoint(entryPoint: string): {
+    filePath: string;
+    functionName: string;
+    className?: string;
+  } {
     const [filePath, functionRef] = entryPoint.split('#');
-    
+
     if (!filePath || !functionRef) {
       throw new CallGraphError(
         `Invalid entry point format: ${entryPoint}`,
@@ -441,8 +445,8 @@ export class EntryPointAnalyzer {
   }
 
   private findEntryPointNode(
-    sourceFile: SourceFile, 
-    functionName: string, 
+    sourceFile: SourceFile,
+    functionName: string,
     className?: string
   ): Node | undefined {
     if (className) {

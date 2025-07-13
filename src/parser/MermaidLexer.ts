@@ -196,6 +196,11 @@ export const Colon = createToken({
   pattern: /:/,
 });
 
+export const Comma = createToken({
+  name: 'Comma',
+  pattern: /,/,
+});
+
 export const Newline = createToken({
   name: 'Newline',
   pattern: /\r?\n/,
@@ -271,6 +276,7 @@ export const allTokens = [
   Pipe,
   Semicolon,
   Colon,
+  Comma,
   Newline,
   
   // Identifiers and text (least specific)
@@ -428,6 +434,7 @@ export const MermaidTokens = {
   Text,
   Semicolon,
   Colon,
+  Comma,
   Newline,
   ClassDefKeyword,
   ClassKeyword,

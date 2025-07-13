@@ -9,6 +9,7 @@ import {
 } from 'ts-morph';
 import { CallGraphEdge } from '../types';
 import { ASTVisitor } from './ASTVisitor';
+import { SymbolResolver } from './SymbolResolver';
 import { logger } from '../utils/logger';
 
 /**
@@ -31,6 +32,16 @@ import { logger } from '../utils/logger';
 export class CallExpressionAnalyzer extends ASTVisitor<CallGraphEdge[]> {
   private sourceNodeId: string = '';
   private edgeCounter: number = 0;
+  private symbolResolver?: SymbolResolver;
+
+  /**
+   * Set the symbol resolver to use for enhanced symbol resolution
+   * 
+   * @param symbolResolver The symbol resolver instance
+   */
+  setSymbolResolver(symbolResolver: SymbolResolver): void {
+    this.symbolResolver = symbolResolver;
+  }
 
   /**
    * Analyze a source file and extract all call expressions as edges
@@ -295,6 +306,15 @@ export class CallExpressionAnalyzer extends ASTVisitor<CallGraphEdge[]> {
    * Resolve identifier to a target node ID
    */
   private resolveIdentifierTarget(identifier: Identifier): string | null {
+    // Use SymbolResolver if available for better resolution
+    if (this.symbolResolver) {
+      const resolved = this.symbolResolver.resolveIdentifier(identifier);
+      if (resolved) {
+        return this.symbolResolver.getFullyQualifiedName(resolved);
+      }
+    }
+
+    // Fallback to original logic
     const symbol = identifier.getSymbol();
     if (!symbol) return null;
     
@@ -343,6 +363,15 @@ export class CallExpressionAnalyzer extends ASTVisitor<CallGraphEdge[]> {
    * Resolve property access to a target node ID
    */
   private resolvePropertyAccessTarget(propAccess: PropertyAccessExpression): string | null {
+    // Use SymbolResolver if available for better resolution
+    if (this.symbolResolver) {
+      const resolved = this.symbolResolver.resolvePropertyAccess(propAccess);
+      if (resolved) {
+        return this.symbolResolver.getFullyQualifiedName(resolved);
+      }
+    }
+
+    // Fallback to original logic
     const propertyName = propAccess.getName();
     const objectExpr = propAccess.getExpression();
     

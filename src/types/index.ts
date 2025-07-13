@@ -13,6 +13,9 @@
 // Core call graph data structures
 export * from './CallGraph';
 
+// Formatter interfaces
+export * from './Formatter';
+
 // Re-export commonly used types for convenience
 export type {
   CallGraph,
@@ -24,12 +27,18 @@ export type {
   CallGraphMetrics,
   CallGraphValidationResult,
   CallGraphSpecification,
-  FormatterOptions,
   OutputFormat,
   AnalysisError,
   EntryPointLocation,
   ProjectContext,
 } from './CallGraph';
+
+export type {
+  Formatter,
+  FormatOptions,
+  ValidationResult,
+  CircularReferenceStrategy,
+} from './Formatter';
 
 // Re-export error classes
 export { CallGraphError } from './CallGraph';

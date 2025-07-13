@@ -1,22 +1,27 @@
-import { CallGraph, FormatterOptions } from '../types/CallGraph';
+import { CallGraph } from '../types/CallGraph';
+import { Formatter, FormatOptions, ValidationResult, CircularReferenceStrategy } from '../types/Formatter';
+import { Writable } from 'stream';
 
-export class JsonFormatter {
-  format(callGraph: CallGraph, options: FormatterOptions = { format: 'json' }): string {
+export class JsonFormatter implements Formatter {
+  format(callGraph: CallGraph, options: FormatOptions = {}): string {
+    // Handle circular references if needed
+    const processedGraph = this.handleCircularReferences(callGraph, options);
+    
     const output: Record<string, unknown> = {};
 
     // Always include metadata
     if (options.includeMetadata !== false) {
-      output.metadata = callGraph.metadata;
+      output.metadata = processedGraph.metadata;
     }
 
     // Core data
-    output.nodes = callGraph.nodes;
-    output.edges = callGraph.edges;
-    output.entryPointId = callGraph.entryPointId;
+    output.nodes = processedGraph.nodes;
+    output.edges = processedGraph.edges;
+    output.entryPointId = processedGraph.entryPointId;
 
     // Additional statistics if requested
     if (options.includeMetrics) {
-      output.statistics = this.generateStatistics(callGraph);
+      output.statistics = this.generateStatistics(processedGraph);
     }
 
     // Format output
@@ -257,7 +262,7 @@ export class JsonFormatter {
   /**
    * Validate JSON output
    */
-  validate(jsonString: string): { isValid: boolean; error?: string } {
+  validate(jsonString: string): ValidationResult {
     try {
       const parsed = JSON.parse(jsonString);
 
@@ -294,6 +299,255 @@ export class JsonFormatter {
         isValid: false,
         error: `JSON parsing error: ${error instanceof Error ? error.message : String(error)}`,
       };
+    }
+  }
+
+  /**
+   * Stream format a call graph to a writable stream
+   * Efficiently handles large graphs by streaming JSON in chunks
+   */
+  formatStream(callGraph: CallGraph, stream: Writable, options: FormatOptions = {}): void {
+    const chunkSize = options.chunkSize || 100;
+    const prettify = options.prettify !== false;
+    const indent = prettify ? 2 : 0;
+    const newline = prettify ? '\n' : '';
+
+    try {
+      // Handle circular references if needed
+      const processedGraph = this.handleCircularReferences(callGraph, options);
+
+      // Start JSON object
+      stream.write('{' + newline);
+
+      let isFirst = true;
+
+      // Write metadata
+      if (options.includeMetadata !== false) {
+        this.writeProperty(stream, 'metadata', processedGraph.metadata, indent, isFirst);
+        isFirst = false;
+      }
+
+      // Write entryPointId
+      this.writeProperty(stream, 'entryPointId', processedGraph.entryPointId, indent, isFirst);
+      isFirst = false;
+
+      // Stream nodes in chunks
+      this.writeProperty(stream, 'nodes', null, indent, isFirst, true);
+      stream.write('[' + newline);
+      
+      for (let i = 0; i < processedGraph.nodes.length; i += chunkSize) {
+        const chunk = processedGraph.nodes.slice(i, i + chunkSize);
+        const chunkJson = JSON.stringify(chunk, null, indent).slice(1, -1); // Remove outer brackets
+        
+        if (i > 0) stream.write(',' + newline);
+        stream.write(chunkJson);
+        
+        if (i + chunkSize < processedGraph.nodes.length) {
+          stream.write(',');
+        }
+      }
+      
+      stream.write(newline + '],' + newline);
+
+      // Stream edges in chunks
+      stream.write(`${' '.repeat(indent > 0 ? indent : 0)}"edges": `);
+      stream.write('[' + newline);
+      
+      for (let i = 0; i < processedGraph.edges.length; i += chunkSize) {
+        const chunk = processedGraph.edges.slice(i, i + chunkSize);
+        const chunkJson = JSON.stringify(chunk, null, indent).slice(1, -1); // Remove outer brackets
+        
+        if (i > 0) stream.write(',' + newline);
+        stream.write(chunkJson);
+        
+        if (i + chunkSize < processedGraph.edges.length) {
+          stream.write(',');
+        }
+      }
+      
+      stream.write(newline + ']');
+
+      // Write statistics if requested
+      if (options.includeMetrics) {
+        stream.write(',' + newline);
+        this.writeProperty(stream, 'statistics', this.generateStatistics(processedGraph), indent, false);
+      }
+
+      // End JSON object
+      stream.write(newline + '}');
+      stream.end();
+    } catch (error) {
+      stream.emit('error', error);
+    }
+  }
+
+  /**
+   * Handle circular references based on the specified strategy
+   */
+  private handleCircularReferences(callGraph: CallGraph, options: FormatOptions): CallGraph {
+    const strategy = options.circularReferenceStrategy || CircularReferenceStrategy.REFERENCE;
+    
+    if (strategy === CircularReferenceStrategy.OMIT) {
+      return this.omitCircularReferences(callGraph);
+    } else if (strategy === CircularReferenceStrategy.REFERENCE) {
+      return this.replaceCircularWithReferences(callGraph);
+    } else {
+      // INLINE_ONCE strategy
+      return this.inlineOnceStrategy(callGraph);
+    }
+  }
+
+  /**
+   * Detect and omit circular references
+   */
+  private omitCircularReferences(callGraph: CallGraph): CallGraph {
+    const cycles = this.detectCycles(callGraph);
+    const cyclicEdgeIds = new Set<string>();
+
+    // Mark edges that are part of cycles
+    cycles.forEach(cycle => {
+      for (let i = 0; i < cycle.length - 1; i++) {
+        const source = cycle[i];
+        const target = cycle[i + 1];
+        const edge = callGraph.edges.find(e => e.source === source && e.target === target);
+        if (edge) {
+          cyclicEdgeIds.add(edge.id);
+        }
+      }
+    });
+
+    return {
+      ...callGraph,
+      edges: callGraph.edges.filter(edge => !cyclicEdgeIds.has(edge.id))
+    };
+  }
+
+  /**
+   * Replace circular references with reference IDs
+   */
+  private replaceCircularWithReferences(callGraph: CallGraph): CallGraph {
+    const cycles = this.detectCycles(callGraph);
+    const processedEdges = [...callGraph.edges];
+
+    cycles.forEach(cycle => {
+      for (let i = 0; i < cycle.length - 1; i++) {
+        const source = cycle[i];
+        const target = cycle[i + 1];
+        const edgeIndex = processedEdges.findIndex(e => e.source === source && e.target === target);
+        
+        if (edgeIndex >= 0) {
+          processedEdges[edgeIndex] = {
+            ...processedEdges[edgeIndex],
+            circular: true,
+            targetRef: target // Reference instead of full target
+          } as any;
+        }
+      }
+    });
+
+    return {
+      ...callGraph,
+      edges: processedEdges
+    };
+  }
+
+  /**
+   * Inline circular references once, then use references
+   */
+  private inlineOnceStrategy(callGraph: CallGraph): CallGraph {
+    // For JSON output, this is similar to reference strategy
+    // but we could add metadata about which nodes are inlined
+    const processed = this.replaceCircularWithReferences(callGraph);
+    const cycles = this.detectCycles(callGraph);
+    
+    return {
+      ...processed,
+      metadata: {
+        ...processed.metadata,
+        circularReferences: cycles.map(cycle => ({ cycle, strategy: 'inline-once' }))
+      } as any
+    };
+  }
+
+  /**
+   * Detect cycles in the call graph
+   */
+  private detectCycles(callGraph: CallGraph): string[][] {
+    const { nodes, edges } = callGraph;
+    const adjacencyList = new Map<string, string[]>();
+    const cycles: string[][] = [];
+    const visited = new Set<string>();
+    const recursionStack = new Set<string>();
+    const path: string[] = [];
+
+    // Build adjacency list
+    nodes.forEach(node => adjacencyList.set(node.id, []));
+    edges.forEach(edge => {
+      const neighbors = adjacencyList.get(edge.source) || [];
+      neighbors.push(edge.target);
+      adjacencyList.set(edge.source, neighbors);
+    });
+
+    const dfs = (nodeId: string): boolean => {
+      if (recursionStack.has(nodeId)) {
+        // Found a cycle
+        const cycleStart = path.indexOf(nodeId);
+        if (cycleStart >= 0) {
+          const cycle = path.slice(cycleStart).concat([nodeId]);
+          cycles.push(cycle);
+        }
+        return true;
+      }
+
+      if (visited.has(nodeId)) {
+        return false;
+      }
+
+      visited.add(nodeId);
+      recursionStack.add(nodeId);
+      path.push(nodeId);
+
+      const neighbors = adjacencyList.get(nodeId) || [];
+      for (const neighborId of neighbors) {
+        dfs(neighborId);
+      }
+
+      recursionStack.delete(nodeId);
+      path.pop();
+      return false;
+    };
+
+    // Check all nodes for cycles
+    nodes.forEach(node => {
+      if (!visited.has(node.id)) {
+        dfs(node.id);
+      }
+    });
+
+    return cycles;
+  }
+
+  /**
+   * Helper method to write a property to the stream
+   */
+  private writeProperty(
+    stream: Writable,
+    key: string,
+    value: any,
+    indent: number,
+    isFirst: boolean,
+    skipValue = false
+  ): void {
+    const comma = isFirst ? '' : ',';
+    const space = indent > 0 ? ' ' : '';
+    const newline = indent > 0 ? '\n' : '';
+    const indentStr = indent > 0 ? ' '.repeat(indent) : '';
+
+    if (skipValue) {
+      stream.write(`${comma}${newline}${indentStr}"${key}":${space}`);
+    } else {
+      const valueJson = JSON.stringify(value, null, indent > 0 ? indent : undefined);
+      stream.write(`${comma}${newline}${indentStr}"${key}":${space}${valueJson}`);
     }
   }
 }

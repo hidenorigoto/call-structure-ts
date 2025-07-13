@@ -1,6 +1,5 @@
 import {
   Project,
-  SourceFile,
   Node,
   SyntaxKind,
   CallExpression,
@@ -23,10 +22,12 @@ import {
 } from '../types/CallGraph';
 import { logger } from '../utils/logger';
 import { ProjectLoader } from './ProjectLoader';
+import { EntryPointFinder, EntryPointInfo } from './EntryPointFinder';
 
 export class CallGraphAnalyzer {
   private project: Project;
   private projectLoader: ProjectLoader;
+  private entryPointFinder: EntryPointFinder;
   private context: ProjectContext;
   private options: Required<CallGraphAnalysisOptions>;
   private visitedNodes = new Set<string>();
@@ -63,6 +64,7 @@ export class CallGraphAnalyzer {
     // For now, keep direct Project creation for backward compatibility
     // TODO: Refactor to use async initialization
     this.project = new Project(projectOptions);
+    this.entryPointFinder = new EntryPointFinder(this.project);
 
     logger.debug(`Initialized CallGraphAnalyzer with context:`, context);
   }
@@ -78,22 +80,28 @@ export class CallGraphAnalyzer {
       this.edges = [];
       this.currentDepth = 0;
 
-      // Parse entry point
-      const { filePath, functionName, className } = this.parseEntryPoint(entryPoint);
-
-      // Find and analyze entry point
-      const sourceFile = this.getSourceFile(filePath);
-      const entryNode = this.findEntryPointNode(sourceFile, functionName, className);
-
-      if (!entryNode) {
-        throw new CallGraphError(
-          `Entry point not found: ${functionName}${className ? ` in class ${className}` : ''}`,
-          'ENTRY_POINT_NOT_FOUND',
-          filePath
-        );
+      // Use EntryPointFinder to find the entry point
+      let entryPointInfo: EntryPointInfo;
+      try {
+        entryPointInfo = this.entryPointFinder.findEntryPoint(entryPoint);
+      } catch (error) {
+        // Convert to CallGraphError for backward compatibility
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes('Source file not found')) {
+          const filePath = entryPoint.split('#')[0];
+          throw new CallGraphError(message, 'SOURCE_FILE_NOT_FOUND', filePath);
+        } else if (message.includes('Entry point not found')) {
+          const filePath = entryPoint.split('#')[0];
+          throw new CallGraphError(message, 'ENTRY_POINT_NOT_FOUND', filePath);
+        } else if (message.includes('Invalid entry point format')) {
+          throw new CallGraphError(message, 'INVALID_ENTRY_POINT_FORMAT');
+        }
+        throw error;
       }
-
+      
+      const entryNode = entryPointInfo.node;
       const entryNodeId = this.generateNodeId(entryNode);
+      
       logger.debug(`Found entry point node: ${entryNodeId}`);
 
       // Perform analysis
@@ -126,102 +134,6 @@ export class CallGraphAnalyzer {
       logger.error(`Analysis failed after ${analysisTime}ms:`, error);
       throw error;
     }
-  }
-
-  private parseEntryPoint(entryPoint: string): {
-    filePath: string;
-    functionName: string;
-    className?: string;
-  } {
-    // Support formats:
-    // - "path/to/file.ts#functionName"
-    // - "path/to/file.ts#ClassName.methodName"
-    const [filePath, functionRef] = entryPoint.split('#');
-
-    if (!filePath || !functionRef) {
-      throw new CallGraphError(
-        `Invalid entry point format: ${entryPoint}. Expected format: "path/to/file.ts#functionName" or "path/to/file.ts#ClassName.methodName"`,
-        'INVALID_ENTRY_POINT_FORMAT'
-      );
-    }
-
-    const parts = functionRef.split('.');
-    if (parts.length === 1) {
-      return { filePath, functionName: parts[0], className: undefined };
-    } else if (parts.length === 2) {
-      return { filePath, className: parts[0], functionName: parts[1] };
-    } else {
-      throw new CallGraphError(
-        `Invalid function reference: ${functionRef}. Expected format: "functionName" or "ClassName.methodName"`,
-        'INVALID_FUNCTION_REFERENCE'
-      );
-    }
-  }
-
-  private getSourceFile(filePath: string): SourceFile {
-    const sourceFile = this.project.getSourceFile(filePath);
-    if (!sourceFile) {
-      throw new CallGraphError(
-        `Source file not found: ${filePath}`,
-        'SOURCE_FILE_NOT_FOUND',
-        filePath
-      );
-    }
-    return sourceFile;
-  }
-
-  private findEntryPointNode(
-    sourceFile: SourceFile,
-    functionName: string,
-    className?: string
-  ): Node | undefined {
-    if (className) {
-      // Look for class method
-      const classDecl = sourceFile.getClass(className);
-      if (classDecl) {
-        const method =
-          classDecl.getMethod(functionName) ||
-          classDecl.getGetAccessor(functionName) ||
-          classDecl.getSetAccessor(functionName);
-        if (method) return method;
-
-        // Check constructor
-        if (functionName === 'constructor') {
-          const constructor = classDecl.getConstructors()[0];
-          if (constructor) return constructor;
-        }
-      }
-    } else {
-      // Look for top-level function
-      const func = sourceFile.getFunction(functionName);
-      if (func) return func;
-
-      // Look for exported functions
-      const exportedDeclarations = sourceFile.getExportedDeclarations();
-      for (const [name, declarations] of exportedDeclarations) {
-        if (name === functionName) {
-          const decl = declarations[0];
-          if (this.isFunctionLikeNode(decl)) {
-            return decl;
-          }
-        }
-      }
-
-      // Look for variable declarations with function expressions or arrow functions
-      const variableStatements = sourceFile.getVariableStatements();
-      for (const varStatement of variableStatements) {
-        for (const declaration of varStatement.getDeclarations()) {
-          if (declaration.getName() === functionName) {
-            const initializer = declaration.getInitializer();
-            if (initializer && this.isFunctionLikeNode(initializer)) {
-              return initializer;
-            }
-          }
-        }
-      }
-    }
-
-    return undefined;
   }
 
   private async analyzeNode(node: Node, depth: number): Promise<void> {

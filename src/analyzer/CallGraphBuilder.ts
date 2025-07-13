@@ -331,7 +331,7 @@ export class CallGraphBuilder {
       generatedAt: new Date().toISOString(),
     });
 
-    const visitedNodes = this.traverseDFS(entryPoint, {
+    this.traverseDFS(entryPoint, {
       maxDepth,
       visitedCallback: (nodeId) => {
         const node = this.nodes.get(nodeId);

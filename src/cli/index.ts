@@ -23,7 +23,7 @@ const program = new Command();
 program
   .name('call-structure')
   .description('Analyze TypeScript function call structures')
-  .version('1.0.0')
+  .version('0.1.0')
   .option('-v, --verbose', 'Enable verbose logging')
   .option('-q, --quiet', 'Disable all output except errors')
   .option('--debug', 'Enable debug logging')

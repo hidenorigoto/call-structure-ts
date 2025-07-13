@@ -410,8 +410,8 @@ describe('CallExpressionAnalyzer', () => {
       
       expect(edges).toHaveLength(2);
       
-      // Second call should be async
-      const asyncCall = edges.find(e => e.line === 6);
+      // Second call should be async (asyncArrow() is on line 7)
+      const asyncCall = edges.find(e => e.line === 7);
       expect(asyncCall?.type).toBe('async');
     });
   });

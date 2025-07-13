@@ -100,14 +100,37 @@ export class CallExpressionAnalyzer extends ASTVisitor<CallGraphEdge[]> {
     const results: CallGraphEdge[] = [];
     
     if (Node.isCallExpression(node)) {
+      // First, analyze nested call expressions in the expression part
+      const expression = node.getExpression();
+      if (Node.isPropertyAccessExpression(expression)) {
+        const object = expression.getExpression();
+        if (Node.isCallExpression(object)) {
+          // Recursively visit the chained call first
+          const chainedResults = this.visitCallExpression(object);
+          results.push(...chainedResults);
+        }
+      }
+      
+      // Then analyze this call
       const edge = this.analyzeCallExpression(node);
       if (edge) {
         results.push(edge);
       }
     }
     
-    // Continue visiting children
-    const childResults = this.visitChildren(node).flat();
+    // Continue visiting children (but not the expression part we already handled)
+    const childResults: CallGraphEdge[] = [];
+    node.forEachChild(child => {
+      // Skip the expression part since we handled it above
+      if (Node.isCallExpression(node) && child === node.getExpression()) {
+        return;
+      }
+      const result = this.visit(child);
+      if (result) {
+        childResults.push(...(Array.isArray(result) ? result : [result]));
+      }
+    });
+    
     return [...results, ...childResults];
   }
 
@@ -466,6 +489,24 @@ export class CallExpressionAnalyzer extends ASTVisitor<CallGraphEdge[]> {
           if (symbolType.getText().includes('Promise')) {
             return 'async';
           }
+          
+          // Check if the target function is declared as async
+          const declarations = symbol.getDeclarations();
+          if (declarations.length > 0) {
+            const decl = declarations[0];
+            if (Node.isFunctionDeclaration(decl) && decl.isAsync()) {
+              return 'async';
+            }
+            if (Node.isVariableDeclaration(decl)) {
+              const init = decl.getInitializer();
+              if (init && Node.isArrowFunction(init) && init.isAsync()) {
+                return 'async';
+              }
+              if (init && Node.isFunctionExpression(init) && init.isAsync()) {
+                return 'async';
+              }
+            }
+          }
         }
       }
     } catch (error) {
@@ -499,7 +540,12 @@ export class CallExpressionAnalyzer extends ASTVisitor<CallGraphEdge[]> {
     while (current) {
       if (Node.isIfStatement(current) || 
           Node.isConditionalExpression(current) ||
-          Node.isCaseClause(current)) {
+          Node.isCaseClause(current) ||
+          Node.isForStatement(current) ||
+          Node.isForInStatement(current) ||
+          Node.isForOfStatement(current) ||
+          Node.isWhileStatement(current) ||
+          Node.isDoStatement(current)) {
         return true;
       }
       

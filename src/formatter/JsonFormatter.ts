@@ -399,8 +399,8 @@ export class JsonFormatter implements Formatter {
   private handleCircularReferences(callGraph: CallGraph, options: FormatOptions): CallGraph {
     const strategy = options.circularReferenceStrategy || CircularReferenceStrategy.REFERENCE;
     
-    // Skip circular reference processing for very large graphs to avoid stack overflow
-    if (callGraph.nodes.length > 5000) {
+    // Skip circular reference processing for extremely large graphs
+    if (callGraph.nodes.length > 50000) {
       return callGraph;
     }
     
@@ -487,16 +487,13 @@ export class JsonFormatter implements Formatter {
   }
 
   /**
-   * Detect cycles in the call graph
+   * Detect cycles in the call graph using a simple approach
    */
   private detectCycles(callGraph: CallGraph): string[][] {
     const { nodes, edges } = callGraph;
     const adjacencyList = new Map<string, string[]>();
     const cycles: string[][] = [];
-    const visited = new Set<string>();
-    const recursionStack = new Set<string>();
-    const path: string[] = [];
-
+    
     // Build adjacency list
     nodes.forEach(node => adjacencyList.set(node.id, []));
     edges.forEach(edge => {
@@ -505,41 +502,63 @@ export class JsonFormatter implements Formatter {
       adjacencyList.set(edge.source, neighbors);
     });
 
-    const dfs = (nodeId: string): boolean => {
-      if (recursionStack.has(nodeId)) {
-        // Found a cycle
-        const cycleStart = path.indexOf(nodeId);
-        if (cycleStart >= 0) {
-          const cycle = path.slice(cycleStart).concat([nodeId]);
-          cycles.push(cycle);
+    // Simple cycle detection for small graphs
+    if (nodes.length < 100) {
+      const visited = new Set<string>();
+      const stack = new Set<string>();
+      const path: string[] = [];
+      
+      const dfs = (nodeId: string): void => {
+        if (stack.has(nodeId)) {
+          // Found a cycle
+          const cycleStart = path.indexOf(nodeId);
+          if (cycleStart >= 0) {
+            cycles.push(path.slice(cycleStart).concat([nodeId]));
+          }
+          return;
         }
-        return true;
-      }
-
-      if (visited.has(nodeId)) {
-        return false;
-      }
-
-      visited.add(nodeId);
-      recursionStack.add(nodeId);
-      path.push(nodeId);
-
-      const neighbors = adjacencyList.get(nodeId) || [];
-      for (const neighborId of neighbors) {
-        dfs(neighborId);
-      }
-
-      recursionStack.delete(nodeId);
-      path.pop();
-      return false;
-    };
-
-    // Check all nodes for cycles
-    nodes.forEach(node => {
-      if (!visited.has(node.id)) {
-        dfs(node.id);
-      }
-    });
+        
+        if (visited.has(nodeId)) {
+          return;
+        }
+        
+        visited.add(nodeId);
+        stack.add(nodeId);
+        path.push(nodeId);
+        
+        const neighbors = adjacencyList.get(nodeId) || [];
+        for (const neighbor of neighbors) {
+          dfs(neighbor);
+        }
+        
+        path.pop();
+        stack.delete(nodeId);
+      };
+      
+      nodes.forEach(node => {
+        if (!visited.has(node.id)) {
+          dfs(node.id);
+        }
+      });
+    } else {
+      // For large graphs, use a simpler detection that just finds basic cycles
+      const visited = new Set<string>();
+      
+      edges.forEach(edge => {
+        // Simple back-edge detection
+        if (edge.source === edge.target) {
+          cycles.push([edge.source, edge.target]);
+        } else {
+          // Check for simple 2-node cycles
+          const reverseEdge = edges.find(e => e.source === edge.target && e.target === edge.source);
+          if (reverseEdge && !visited.has(`${edge.source}-${edge.target}`)) {
+            cycles.push([edge.source, edge.target, edge.source]);
+            visited.add(`${edge.source}-${edge.target}`);
+            visited.add(`${edge.target}-${edge.source}`);
+          }
+        }
+      });
+    }
 
     return cycles;
   }

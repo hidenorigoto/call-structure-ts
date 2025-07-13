@@ -7,12 +7,12 @@ import { JsonFormatter } from '../formatter/JsonFormatter';
 import { YamlFormatter } from '../formatter/YamlFormatter';
 import { MermaidFormatter } from '../formatter/MermaidFormatter';
 import {
-  CallGraphAnalysisOptions,
   OutputFormat,
   ProjectContext,
   CallGraphError,
 } from '../types/CallGraph';
 import { logger, LogLevel } from '../utils/logger';
+import { analyzeCommand } from './commands/analyze';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
@@ -131,34 +131,6 @@ program
     }
   });
 
-async function analyzeCommand(options: any): Promise<void> {
-  logger.progress(`Starting analysis of entry point: ${options.entry}`);
-
-  // Create project context
-  const context = createProjectContext(options);
-
-  // Create analysis options
-  const analysisOptions = createAnalysisOptions(options);
-
-  // Perform analysis
-  const analyzer = new CallGraphAnalyzer(context, analysisOptions);
-  const callGraph = await analyzer.analyzeFromEntryPoint(options.entry);
-
-  // Format output
-  const output = formatOutput(callGraph, options.format, {
-    includeMetadata: true,
-    includeMetrics: options.metrics,
-    prettify: true,
-  });
-
-  // Save or display output
-  if (options.output) {
-    await saveOutput(output, options.output);
-    logger.success(`Analysis complete. Results saved to: ${options.output}`);
-  } else {
-    console.log(output);
-  }
-}
 
 async function discoverCommand(options: any): Promise<void> {
   logger.progress('Discovering entry points...');
@@ -331,26 +303,6 @@ function createProjectContext(options: any): ProjectContext {
   };
 }
 
-function createAnalysisOptions(options: any): CallGraphAnalysisOptions {
-  const analysisOptions: CallGraphAnalysisOptions = {
-    maxDepth: parseInt(options.maxDepth) || 10,
-    includeNodeModules: options.includeNodeModules || false,
-    includeTestFiles: options.includeTests || false,
-    followImports: true,
-    analyzeCallbacks: !options.noCallbacks,
-    collectMetrics: options.metrics || false,
-  };
-
-  if (options.exclude) {
-    analysisOptions.excludePatterns = options.exclude.map((pattern: string) => new RegExp(pattern));
-  }
-
-  if (options.include) {
-    analysisOptions.includePatterns = options.include.map((pattern: string) => new RegExp(pattern));
-  }
-
-  return analysisOptions;
-}
 
 function formatOutput(callGraph: any, format: OutputFormat, options: any): string {
   switch (format.toLowerCase()) {

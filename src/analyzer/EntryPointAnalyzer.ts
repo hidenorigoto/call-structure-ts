@@ -5,14 +5,15 @@ import {
   EntryPointLocation,
   ProjectContext,
   CallGraphAnalysisOptions,
-  CallGraphError,
 } from '../types/CallGraph';
 import { logger } from '../utils/logger';
+import { EntryPointFinder } from './EntryPointFinder';
 import * as path from 'path';
 
 export class EntryPointAnalyzer {
   private project: Project;
   private context: ProjectContext;
+  private entryPointFinder: EntryPointFinder;
 
   constructor(context: ProjectContext) {
     this.context = context;
@@ -25,6 +26,7 @@ export class EntryPointAnalyzer {
     }
 
     this.project = new Project(projectOptions);
+    this.entryPointFinder = new EntryPointFinder(this.project);
   }
 
   /**
@@ -155,32 +157,14 @@ export class EntryPointAnalyzer {
     location?: EntryPointLocation;
   }> {
     try {
-      const { filePath, functionName, className } = this.parseEntryPoint(entryPoint);
-
-      // Check if file exists
-      const sourceFile = this.project.getSourceFile(filePath);
-      if (!sourceFile) {
-        return {
-          isValid: false,
-          error: `Source file not found: ${filePath}`,
-        };
-      }
-
-      // Check if function/method exists
-      const node = this.findEntryPointNode(sourceFile, functionName, className);
-      if (!node) {
-        return {
-          isValid: false,
-          error: `Function ${functionName}${className ? ` in class ${className}` : ''} not found in ${filePath}`,
-        };
-      }
-
+      const entryPointInfo = this.entryPointFinder.findEntryPoint(entryPoint);
+      
       return {
         isValid: true,
         location: {
-          filePath,
-          functionName,
-          className,
+          filePath: entryPointInfo.file,
+          functionName: entryPointInfo.name,
+          className: entryPointInfo.className,
         },
       };
     } catch (error) {
@@ -427,65 +411,4 @@ export class EntryPointAnalyzer {
     });
   }
 
-  private parseEntryPoint(entryPoint: string): {
-    filePath: string;
-    functionName: string;
-    className?: string;
-  } {
-    const [filePath, functionRef] = entryPoint.split('#');
-
-    if (!filePath || !functionRef) {
-      throw new CallGraphError(
-        `Invalid entry point format: ${entryPoint}`,
-        'INVALID_ENTRY_POINT_FORMAT'
-      );
-    }
-
-    const parts = functionRef.split('.');
-    if (parts.length === 1) {
-      return { filePath, functionName: parts[0], className: undefined };
-    } else if (parts.length === 2) {
-      return { filePath, className: parts[0], functionName: parts[1] };
-    } else {
-      throw new CallGraphError(
-        `Invalid function reference: ${functionRef}`,
-        'INVALID_FUNCTION_REFERENCE'
-      );
-    }
-  }
-
-  private findEntryPointNode(
-    sourceFile: SourceFile,
-    functionName: string,
-    className?: string
-  ): Node | undefined {
-    if (className) {
-      const classDecl = sourceFile.getClass(className);
-      if (classDecl) {
-        const method = classDecl.getMethod(functionName);
-        if (method) return method;
-
-        if (functionName === 'constructor') {
-          const constructor = classDecl.getConstructors()[0];
-          if (constructor) return constructor;
-        }
-      }
-    } else {
-      const func = sourceFile.getFunction(functionName);
-      if (func) return func;
-
-      // Check exported functions
-      const exportedDeclarations = sourceFile.getExportedDeclarations();
-      for (const [name, declarations] of exportedDeclarations) {
-        if (name === functionName) {
-          const decl = declarations[0];
-          if (Node.isFunctionDeclaration(decl)) {
-            return decl;
-          }
-        }
-      }
-    }
-
-    return undefined;
-  }
 }

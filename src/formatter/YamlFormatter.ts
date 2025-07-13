@@ -1,44 +1,71 @@
 import * as yaml from 'js-yaml';
-import { CallGraph, FormatterOptions } from '../types/CallGraph';
+import { CallGraph } from '../types/CallGraph';
+import { Formatter, FormatOptions, ValidationResult, CircularReferenceStrategy } from '../types/Formatter';
+import { Writable } from 'stream';
 
-export class YamlFormatter {
-  format(callGraph: CallGraph, options: FormatterOptions = { format: 'yaml' }): string {
+/**
+ * YAML-specific format options
+ */
+export interface YamlFormatOptions extends FormatOptions {
+  /** Include inline comments for better documentation */
+  includeComments?: boolean;
+  /** Control flow style vs block style (-1 for all block) */
+  flowLevel?: number;
+  /** Line width for wrapping (-1 to disable) */
+  lineWidth?: number;
+  /** Scalar string style */
+  scalarStyle?: 'plain' | 'single' | 'double' | 'literal' | 'folded';
+}
+
+export class YamlFormatter implements Formatter {
+  format(callGraph: CallGraph, options: FormatOptions = {}): string {
+    // Handle circular references if needed
+    const processedGraph = this.handleCircularReferences(callGraph, options);
+    
     const output: any = {};
+    const yamlOptions = options as YamlFormatOptions;
 
     // Metadata section
     if (options.includeMetadata !== false) {
-      output.metadata = this.formatMetadata(callGraph.metadata);
+      output.metadata = this.formatMetadata(processedGraph.metadata);
     }
 
     // Entry point information
     output.entry_point = {
-      id: callGraph.entryPointId,
-      function: this.findNodeById(callGraph, callGraph.entryPointId)?.name || 'unknown',
+      id: processedGraph.entryPointId,
+      function: this.findNodeById(processedGraph, processedGraph.entryPointId)?.name || 'unknown',
     };
 
     // Nodes section
-    output.functions = callGraph.nodes.map(node => this.formatNode(node));
+    output.functions = processedGraph.nodes.map(node => this.formatNode(node));
 
     // Edges section
-    output.calls = callGraph.edges.map(edge => this.formatEdge(edge, callGraph));
+    output.calls = processedGraph.edges.map(edge => this.formatEdge(edge, processedGraph));
 
     // Statistics if requested
     if (options.includeMetrics) {
-      output.statistics = this.generateYamlStatistics(callGraph);
+      output.statistics = this.generateYamlStatistics(processedGraph);
     }
 
     // Convert to YAML with custom formatting
-    return yaml.dump(output, {
+    const yamlString = yaml.dump(output, {
       indent: 2,
-      lineWidth: -1, // Disable line wrapping
-      noRefs: true,
+      lineWidth: yamlOptions.lineWidth ?? -1, // Disable line wrapping by default
+      noRefs: options.circularReferenceStrategy === CircularReferenceStrategy.OMIT,
       sortKeys: false,
-      flowLevel: -1, // Use block style for arrays
+      flowLevel: yamlOptions.flowLevel ?? -1, // Use block style for arrays by default
     });
+
+    // Add comments if requested
+    if (yamlOptions.includeComments) {
+      return this.addComments(yamlString, processedGraph);
+    }
+
+    return yamlString;
   }
 
   private formatMetadata(metadata: CallGraph['metadata']): any {
-    return {
+    const formattedMetadata: any = {
       generated_at: metadata.generatedAt,
       entry_point: metadata.entryPoint,
       project_root: metadata.projectRoot,
@@ -47,6 +74,13 @@ export class YamlFormatter {
       max_depth: metadata.maxDepth,
       total_files: metadata.totalFiles,
     };
+    
+    // Include circular references if present
+    if ((metadata as any).circularReferences) {
+      formattedMetadata.circularReferences = (metadata as any).circularReferences;
+    }
+    
+    return formattedMetadata;
   }
 
   private formatNode(node: CallGraph['nodes'][0]): any {
@@ -363,10 +397,13 @@ export class YamlFormatter {
   /**
    * Validate YAML output
    */
-  validate(yamlString: string): { isValid: boolean; error?: string } {
+  validate(yamlString: string): ValidationResult {
+    const warnings: string[] = [];
+    
     try {
       const parsed = yaml.load(yamlString) as any;
 
+      // Check for required fields
       if (!parsed.functions || !Array.isArray(parsed.functions)) {
         return { isValid: false, error: 'Missing or invalid functions array' };
       }
@@ -379,12 +416,329 @@ export class YamlFormatter {
         return { isValid: false, error: 'Missing or invalid entry_point' };
       }
 
-      return { isValid: true };
+      // Validate node structure
+      for (const func of parsed.functions) {
+        if (!func.id || !func.name || !func.type) {
+          return { isValid: false, error: 'Invalid function structure: missing required fields' };
+        }
+        if (!func.file) {
+          warnings.push(`Function ${func.name} missing file path`);
+        }
+      }
+
+      // Validate edge structure
+      for (const call of parsed.calls) {
+        if (!call.from || !call.to || !call.type) {
+          return { isValid: false, error: 'Invalid call structure: missing required fields' };
+        }
+      }
+
+      // Check for potential issues
+      if (parsed.functions.length > 10000) {
+        warnings.push('Large number of functions detected (>10,000). Consider using streaming for better performance.');
+      }
+
+      return { isValid: true, warnings: warnings.length > 0 ? warnings : undefined };
     } catch (error) {
       return {
         isValid: false,
         error: `YAML parsing error: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
+  }
+
+  /**
+   * Stream format a call graph to a writable stream
+   * Efficiently handles large graphs by streaming YAML in chunks
+   */
+  formatStream(callGraph: CallGraph, stream: Writable, options: FormatOptions = {}): void {
+    const yamlOptions = options as YamlFormatOptions;
+    const chunkSize = options.chunkSize || 100;
+    
+    try {
+      // Handle circular references if needed
+      const processedGraph = this.handleCircularReferences(callGraph, options);
+      
+      // Write YAML header
+      stream.write('---\n');
+      
+      // Write metadata if requested
+      if (options.includeMetadata !== false) {
+        stream.write('metadata:\n');
+        const metadataYaml = yaml.dump(this.formatMetadata(processedGraph.metadata), {
+          indent: 2,
+          lineWidth: yamlOptions.lineWidth ?? -1,
+        });
+        stream.write(this.indentYaml(metadataYaml, 2));
+        stream.write('\n');
+      }
+      
+      // Write entry point
+      stream.write('entry_point:\n');
+      const entryNode = this.findNodeById(processedGraph, processedGraph.entryPointId);
+      stream.write(`  id: ${processedGraph.entryPointId}\n`);
+      stream.write(`  function: ${entryNode?.name || 'unknown'}\n\n`);
+      
+      // Stream functions array
+      stream.write('functions:\n');
+      for (let i = 0; i < processedGraph.nodes.length; i += chunkSize) {
+        const chunk = processedGraph.nodes.slice(i, i + chunkSize);
+        for (const node of chunk) {
+          const nodeYaml = yaml.dump([this.formatNode(node)], {
+            indent: 2,
+            lineWidth: yamlOptions.lineWidth ?? -1,
+            flowLevel: yamlOptions.flowLevel ?? -1,
+          });
+          // Remove the array brackets and adjust indentation
+          const formattedYaml = nodeYaml.replace(/^- /, '  - ').replace(/\n {2}/g, '\n    ');
+          stream.write(formattedYaml);
+        }
+      }
+      
+      stream.write('\n');
+      
+      // Stream calls array
+      stream.write('calls:\n');
+      for (let i = 0; i < processedGraph.edges.length; i += chunkSize) {
+        const chunk = processedGraph.edges.slice(i, i + chunkSize);
+        for (const edge of chunk) {
+          const edgeYaml = yaml.dump([this.formatEdge(edge, processedGraph)], {
+            indent: 2,
+            lineWidth: yamlOptions.lineWidth ?? -1,
+            flowLevel: yamlOptions.flowLevel ?? -1,
+          });
+          // Remove the array brackets and adjust indentation
+          const formattedYaml = edgeYaml.replace(/^- /, '  - ').replace(/\n {2}/g, '\n    ');
+          stream.write(formattedYaml);
+        }
+      }
+      
+      // Write statistics if requested
+      if (options.includeMetrics) {
+        stream.write('\nstatistics:\n');
+        const statsYaml = yaml.dump(this.generateYamlStatistics(processedGraph), {
+          indent: 2,
+          lineWidth: yamlOptions.lineWidth ?? -1,
+        });
+        stream.write(this.indentYaml(statsYaml, 2));
+      }
+      
+      stream.end();
+    } catch (error) {
+      stream.emit('error', error);
+    }
+  }
+
+  /**
+   * Handle circular references based on the specified strategy
+   */
+  private handleCircularReferences(callGraph: CallGraph, options: FormatOptions): CallGraph {
+    const strategy = options.circularReferenceStrategy || CircularReferenceStrategy.REFERENCE;
+    
+    if (strategy === CircularReferenceStrategy.OMIT) {
+      return this.omitCircularReferences(callGraph);
+    } else if (strategy === CircularReferenceStrategy.REFERENCE) {
+      return this.replaceCircularWithReferences(callGraph);
+    } else {
+      // INLINE_ONCE strategy - for YAML we can use anchors and aliases
+      return this.inlineOnceStrategy(callGraph);
+    }
+  }
+
+  /**
+   * Detect and omit circular references
+   */
+  private omitCircularReferences(callGraph: CallGraph): CallGraph {
+    const cycles = this.detectCycles(callGraph);
+    const cyclicEdgeIds = new Set<string>();
+
+    // Mark edges that are part of cycles
+    cycles.forEach(cycle => {
+      for (let i = 0; i < cycle.length - 1; i++) {
+        const source = cycle[i];
+        const target = cycle[i + 1];
+        const edge = callGraph.edges.find(e => e.source === source && e.target === target);
+        if (edge) {
+          cyclicEdgeIds.add(edge.id);
+        }
+      }
+    });
+
+    return {
+      ...callGraph,
+      edges: callGraph.edges.filter(edge => !cyclicEdgeIds.has(edge.id))
+    };
+  }
+
+  /**
+   * Replace circular references with reference markers
+   */
+  private replaceCircularWithReferences(callGraph: CallGraph): CallGraph {
+    const cycles = this.detectCycles(callGraph);
+    const processedEdges = [...callGraph.edges];
+
+    cycles.forEach(cycle => {
+      for (let i = 0; i < cycle.length - 1; i++) {
+        const source = cycle[i];
+        const target = cycle[i + 1];
+        const edgeIndex = processedEdges.findIndex(e => e.source === source && e.target === target);
+        
+        if (edgeIndex >= 0) {
+          processedEdges[edgeIndex] = {
+            ...processedEdges[edgeIndex],
+            circular: true,
+          } as any;
+        }
+      }
+    });
+
+    return {
+      ...callGraph,
+      edges: processedEdges
+    };
+  }
+
+  /**
+   * Inline circular references once (YAML will use anchors/aliases)
+   */
+  private inlineOnceStrategy(callGraph: CallGraph): CallGraph {
+    // For YAML, we'll mark nodes that should use anchors
+    const cycles = this.detectCycles(callGraph);
+    const circularNodeIds = new Set<string>();
+    
+    cycles.forEach(cycle => {
+      cycle.forEach(nodeId => circularNodeIds.add(nodeId));
+    });
+    
+    return {
+      ...callGraph,
+      metadata: {
+        ...callGraph.metadata,
+        circularReferences: cycles.map(cycle => ({ cycle, strategy: 'inline-once' }))
+      } as any
+    };
+  }
+
+  /**
+   * Detect cycles in the call graph
+   */
+  private detectCycles(callGraph: CallGraph): string[][] {
+    const { nodes, edges } = callGraph;
+    const adjacencyList = new Map<string, string[]>();
+    const cycles: string[][] = [];
+    
+    // Build adjacency list
+    nodes.forEach(node => adjacencyList.set(node.id, []));
+    edges.forEach(edge => {
+      const neighbors = adjacencyList.get(edge.source) || [];
+      neighbors.push(edge.target);
+      adjacencyList.set(edge.source, neighbors);
+    });
+
+    // Simple cycle detection for small graphs
+    if (nodes.length < 100) {
+      const visited = new Set<string>();
+      const stack = new Set<string>();
+      const path: string[] = [];
+      
+      const dfs = (nodeId: string): void => {
+        if (stack.has(nodeId)) {
+          // Found a cycle
+          const cycleStart = path.indexOf(nodeId);
+          if (cycleStart >= 0) {
+            cycles.push(path.slice(cycleStart).concat([nodeId]));
+          }
+          return;
+        }
+        
+        if (visited.has(nodeId)) {
+          return;
+        }
+        
+        visited.add(nodeId);
+        stack.add(nodeId);
+        path.push(nodeId);
+        
+        const neighbors = adjacencyList.get(nodeId) || [];
+        for (const neighbor of neighbors) {
+          dfs(neighbor);
+        }
+        
+        path.pop();
+        stack.delete(nodeId);
+      };
+      
+      nodes.forEach(node => {
+        if (!visited.has(node.id)) {
+          dfs(node.id);
+        }
+      });
+    } else {
+      // For large graphs, use simpler detection
+      edges.forEach(edge => {
+        if (edge.source === edge.target) {
+          cycles.push([edge.source, edge.target]);
+        }
+      });
+    }
+
+    return cycles;
+  }
+
+  /**
+   * Add comments to YAML output
+   */
+  private addComments(yamlString: string, callGraph: CallGraph): string {
+    const lines = yamlString.split('\n');
+    const commentedLines: string[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Add comments for specific fields
+      if (line.includes('generated_at:')) {
+        commentedLines.push(line + ' # Timestamp when this analysis was performed');
+      } else if (line.includes('entry_point:') && !line.includes('  ')) {
+        commentedLines.push(line + ' # Starting point of the call graph analysis');
+      } else if (line.includes('functions:') && !line.includes('  ')) {
+        commentedLines.push(line + ' # List of all functions/methods discovered');
+      } else if (line.includes('calls:') && !line.includes('  ')) {
+        commentedLines.push(line + ' # List of all function calls detected');
+      } else if (line.includes('statistics:') && !line.includes('  ')) {
+        commentedLines.push(line + ' # Analysis metrics and insights');
+      } else if (line.includes('total_functions:')) {
+        commentedLines.push(line + ' # Total number of unique functions');
+      } else if (line.includes('total_calls:')) {
+        commentedLines.push(line + ' # Total number of function calls');
+      } else if (line.includes('hotspots:')) {
+        commentedLines.push(line + ' # Most frequently called functions');
+      } else if (line.includes('circular:') && line.includes('true')) {
+        commentedLines.push(line + ' # This edge creates a circular dependency');
+      } else {
+        commentedLines.push(line);
+      }
+    }
+    
+    // Add header comment
+    const header = [
+      '# Call Graph Analysis Results',
+      `# Generated: ${callGraph.metadata.generatedAt}`,
+      `# Entry Point: ${callGraph.metadata.entryPoint}`,
+      `# Total Files Analyzed: ${callGraph.metadata.totalFiles}`,
+      `# Analysis Time: ${callGraph.metadata.analysisTimeMs}ms`,
+      '',
+    ];
+    
+    return header.join('\n') + commentedLines.join('\n');
+  }
+
+  /**
+   * Helper to indent YAML string
+   */
+  private indentYaml(yamlString: string, spaces: number): string {
+    const indent = ' '.repeat(spaces);
+    return yamlString.split('\n')
+      .map(line => line ? indent + line : line)
+      .join('\n');
   }
 }

@@ -70,7 +70,7 @@ export class CallExpressionAnalyzer extends ASTVisitor<CallGraphEdge[]> {
     try {
       const targetId = this.resolveCallTarget(callExpr);
       if (!targetId) {
-        logger.debug(`Could not resolve call target at line ${callExpr.getStartLineNumber()}`);
+        logger.debug(`Could not resolve call target at line ${callExpr.getStartLineNumber()}: ${callExpr.getText().substring(0, 50)}`);
         return null;
       }
 
@@ -109,6 +109,24 @@ export class CallExpressionAnalyzer extends ASTVisitor<CallGraphEdge[]> {
     // Continue visiting children
     const childResults = this.visitChildren(node).flat();
     return [...results, ...childResults];
+  }
+
+  /**
+   * Override the dispatch to ensure we handle all node types
+   */
+  protected override dispatchVisit(node: Node): CallGraphEdge[] | undefined {
+    // Handle call expressions explicitly
+    if (Node.isCallExpression(node)) {
+      return this.visitCallExpression(node);
+    }
+    
+    // Handle new expressions explicitly
+    if (Node.isNewExpression(node)) {
+      return this.visitNewExpression(node);
+    }
+    
+    // Let parent handle other known types
+    return super.dispatchVisit(node);
   }
 
   /**
@@ -284,6 +302,15 @@ export class CallExpressionAnalyzer extends ASTVisitor<CallGraphEdge[]> {
     // Handle imported symbols
     if (Node.isImportSpecifier(declaration) || Node.isImportClause(declaration)) {
       return this.resolveImportedSymbol(symbol);
+    }
+    
+    // Handle parameter declarations (e.g., callback parameters)
+    if (Node.isParameterDeclaration(declaration)) {
+      const parent = declaration.getParent();
+      if (parent) {
+        const filePath = declaration.getSourceFile().getFilePath();
+        return `${filePath}#parameter-${declaration.getStart()}`;
+      }
     }
     
     return null;

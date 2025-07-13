@@ -286,4 +286,23 @@ export class FunctionAnalyzer extends ASTVisitor<CallGraphNode[]> {
     // FunctionDeclaration doesn't support decorators in current TypeScript
     return [];
   }
+
+  /**
+   * Override getNodeId to provide better unique identification
+   * The base class implementation can cause collisions between SourceFile and its first child
+   */
+  protected override getNodeId(node: Node): string {
+    const sourceFile = node.getSourceFile();
+    const filePath = sourceFile.getFilePath();
+    const start = node.getStart();
+    const kind = node.getKindName();
+    
+    // For source files, use a special identifier
+    if (Node.isSourceFile(node)) {
+      return `${filePath}:SourceFile`;
+    }
+    
+    // For other nodes, include the kind to ensure uniqueness
+    return `${filePath}:${kind}:${start}`;
+  }
 }

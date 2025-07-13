@@ -5,9 +5,7 @@ import {
   PropertyAccessExpression,
   Identifier,
   NewExpression,
-  Symbol,
-  Type,
-  ts,
+  Symbol as TsSymbol,
 } from 'ts-morph';
 import { CallGraphEdge } from '../types';
 import { ASTVisitor } from './ASTVisitor';
@@ -360,7 +358,7 @@ export class CallExpressionAnalyzer extends ASTVisitor<CallGraphEdge[]> {
   /**
    * Resolve imported symbols to their source
    */
-  private resolveImportedSymbol(symbol: Symbol): string | null {
+  private resolveImportedSymbol(_symbol: TsSymbol): string | null {
     // For now, return null for external imports
     // This could be extended to follow imports if needed
     return null;

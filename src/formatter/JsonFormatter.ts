@@ -311,6 +311,7 @@ export class JsonFormatter implements Formatter {
     const prettify = options.prettify !== false;
     const indent = prettify ? 2 : 0;
     const newline = prettify ? '\n' : '';
+    const indentStr = prettify ? ' '.repeat(indent) : '';
 
     try {
       // Handle circular references if needed
@@ -331,46 +332,57 @@ export class JsonFormatter implements Formatter {
       this.writeProperty(stream, 'entryPointId', processedGraph.entryPointId, indent, isFirst);
       isFirst = false;
 
-      // Stream nodes in chunks
-      this.writeProperty(stream, 'nodes', null, indent, isFirst, true);
-      stream.write('[' + newline);
+      // Stream nodes array
+      const comma1 = isFirst ? '' : ',';
+      stream.write(`${comma1}${newline}${indentStr}"nodes": [${newline}`);
       
       for (let i = 0; i < processedGraph.nodes.length; i += chunkSize) {
         const chunk = processedGraph.nodes.slice(i, i + chunkSize);
-        const chunkJson = JSON.stringify(chunk, null, indent).slice(1, -1); // Remove outer brackets
         
-        if (i > 0) stream.write(',' + newline);
-        stream.write(chunkJson);
-        
-        if (i + chunkSize < processedGraph.nodes.length) {
-          stream.write(',');
+        for (let j = 0; j < chunk.length; j++) {
+          const globalIndex = i + j;
+          if (globalIndex > 0) stream.write(',' + newline);
+          
+          const nodeJson = JSON.stringify(chunk[j], null, prettify ? indent : undefined);
+          const indentedJson = prettify ? nodeJson.split('\n').map((line, idx) => 
+            idx === 0 ? indentStr + line : ' '.repeat(indent * 2) + line
+          ).join('\n') : nodeJson;
+          
+          stream.write(indentedJson);
         }
       }
       
-      stream.write(newline + '],' + newline);
+      stream.write(newline + indentStr + '],' + newline);
 
-      // Stream edges in chunks
-      stream.write(`${' '.repeat(indent > 0 ? indent : 0)}"edges": `);
-      stream.write('[' + newline);
+      // Stream edges array
+      stream.write(`${indentStr}"edges": [${newline}`);
       
       for (let i = 0; i < processedGraph.edges.length; i += chunkSize) {
         const chunk = processedGraph.edges.slice(i, i + chunkSize);
-        const chunkJson = JSON.stringify(chunk, null, indent).slice(1, -1); // Remove outer brackets
         
-        if (i > 0) stream.write(',' + newline);
-        stream.write(chunkJson);
-        
-        if (i + chunkSize < processedGraph.edges.length) {
-          stream.write(',');
+        for (let j = 0; j < chunk.length; j++) {
+          const globalIndex = i + j;
+          if (globalIndex > 0) stream.write(',' + newline);
+          
+          const edgeJson = JSON.stringify(chunk[j], null, prettify ? indent : undefined);
+          const indentedJson = prettify ? edgeJson.split('\n').map((line, idx) => 
+            idx === 0 ? indentStr + line : ' '.repeat(indent * 2) + line
+          ).join('\n') : edgeJson;
+          
+          stream.write(indentedJson);
         }
       }
       
-      stream.write(newline + ']');
+      stream.write(newline + indentStr + ']');
 
       // Write statistics if requested
       if (options.includeMetrics) {
         stream.write(',' + newline);
-        this.writeProperty(stream, 'statistics', this.generateStatistics(processedGraph), indent, false);
+        const statisticsJson = JSON.stringify(this.generateStatistics(processedGraph), null, prettify ? indent : undefined);
+        const indentedStats = prettify ? statisticsJson.split('\n').map((line, idx) => 
+          idx === 0 ? indentStr + '"statistics": ' + line : ' '.repeat(indent * 2) + line
+        ).join('\n') : `${indentStr}"statistics": ${statisticsJson}`;
+        stream.write(indentedStats);
       }
 
       // End JSON object
@@ -386,6 +398,11 @@ export class JsonFormatter implements Formatter {
    */
   private handleCircularReferences(callGraph: CallGraph, options: FormatOptions): CallGraph {
     const strategy = options.circularReferenceStrategy || CircularReferenceStrategy.REFERENCE;
+    
+    // Skip circular reference processing for very large graphs to avoid stack overflow
+    if (callGraph.nodes.length > 5000) {
+      return callGraph;
+    }
     
     if (strategy === CircularReferenceStrategy.OMIT) {
       return this.omitCircularReferences(callGraph);

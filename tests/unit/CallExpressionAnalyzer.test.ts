@@ -1,5 +1,6 @@
 import { Project, SourceFile } from 'ts-morph';
 import { CallExpressionAnalyzer } from '../../src/analyzer/CallExpressionAnalyzer';
+import { SymbolResolver } from '../../src/analyzer/SymbolResolver';
 import { CallGraphEdge } from '../../src/types';
 
 describe('CallExpressionAnalyzer', () => {
@@ -470,6 +471,93 @@ describe('CallExpressionAnalyzer', () => {
       
       // External calls might not be resolved (return null from resolveImportedSymbol)
       expect(edges).toBeDefined();
+    });
+  });
+
+  describe('SymbolResolver integration', () => {
+    it('should use SymbolResolver when available for better resolution', () => {
+      const helperFile = project.createSourceFile('helper.ts', `
+        export function helperFunction() {
+          return 'helper';
+        }
+      `);
+
+      const mainFile = project.createSourceFile('main.ts', `
+        import { helperFunction } from './helper';
+        
+        function main() {
+          helperFunction();
+        }
+      `);
+
+      const symbolResolver = new SymbolResolver(project);
+      analyzer.setSymbolResolver(symbolResolver);
+
+      const mainFunc = findFunctionNode(mainFile, 'main');
+      expect(mainFunc).toBeDefined();
+
+      const edges = analyzer.analyzeNode(mainFunc!, 'main.ts#main');
+      expect(edges.length).toBe(1);
+      
+      // With SymbolResolver, should resolve to the actual function in helper.ts
+      expect(edges[0].target).toContain('/helper.ts#helperFunction');
+    });
+
+    it('should resolve cross-module method calls with SymbolResolver', () => {
+      const serviceFile = project.createSourceFile('service.ts', `
+        export class UserService {
+          getUser(id: number) {
+            return { id, name: 'User' };
+          }
+        }
+      `);
+
+      const mainFile = project.createSourceFile('main.ts', `
+        import { UserService } from './service';
+        
+        function main() {
+          const service = new UserService();
+          service.getUser(1);
+        }
+      `);
+
+      const symbolResolver = new SymbolResolver(project);
+      analyzer.setSymbolResolver(symbolResolver);
+
+      const mainFunc = findFunctionNode(mainFile, 'main');
+      expect(mainFunc).toBeDefined();
+
+      const edges = analyzer.analyzeNode(mainFunc!, 'main.ts#main');
+      
+      // Should find at least one call (method call)
+      expect(edges.length).toBeGreaterThanOrEqual(1);
+      
+      // Find the method call edge
+      const methodCallEdge = edges.find(edge => edge.target.includes('getUser'));
+      expect(methodCallEdge).toBeDefined();
+      expect(methodCallEdge!.target).toContain('/service.ts#UserService::getUser');
+    });
+
+    it('should fall back to original resolution when SymbolResolver fails', () => {
+      const sourceFile = project.createSourceFile('fallback.ts', `
+        function helper() {}
+        
+        function testFunction() {
+          helper();
+        }
+      `);
+
+      const symbolResolver = new SymbolResolver(project);
+      analyzer.setSymbolResolver(symbolResolver);
+
+      const testFunc = findFunctionNode(sourceFile, 'testFunction');
+      expect(testFunc).toBeDefined();
+
+      const edges = analyzer.analyzeNode(testFunc!, 'fallback.ts#testFunction');
+      expect(edges.length).toBe(1);
+      
+      // Should still resolve local function calls
+      expect(edges[0].target).toContain('helper');
     });
   });
 });

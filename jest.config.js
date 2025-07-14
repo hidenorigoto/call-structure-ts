@@ -29,5 +29,13 @@ module.exports = {
     'html'
   ],
   testTimeout: 30000,
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts']
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  coverageThreshold: {
+    global: {
+      branches: 74,   // Current: 74.17%
+      functions: 86,  // Current: 86.44%
+      lines: 84,      // Current: 84.46%
+      statements: 83  // Current: 83.67%
+    }
+  }
 };

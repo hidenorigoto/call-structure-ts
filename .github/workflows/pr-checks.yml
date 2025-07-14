@@ -37,7 +37,7 @@ jobs:
         run: npm test
         
       - name: Run tests with coverage
-        run: npm run test:coverage
+        run: npm run test:ci
         if: matrix.node-version == '24.x'
         
       - name: Upload coverage reports
@@ -47,6 +47,34 @@ jobs:
           name: coverage-reports
           path: coverage/
           retention-days: 7
+          
+      - name: Comment coverage on PR
+        uses: actions/github-script@v7
+        if: matrix.node-version == '24.x' && github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const coverage = JSON.parse(fs.readFileSync('./coverage/coverage-summary.json', 'utf8'));
+            const total = coverage.total;
+            
+            const comment = `## Test Coverage Report
+            
+            | Coverage Type | Percentage | Status |
+            |---------------|------------|---------|
+            | Statements    | ${total.statements.pct}% | ${total.statements.pct >= 80 ? '✅' : '❌'} |
+            | Branches      | ${total.branches.pct}% | ${total.branches.pct >= 80 ? '✅' : '❌'} |
+            | Functions     | ${total.functions.pct}% | ${total.functions.pct >= 80 ? '✅' : '❌'} |
+            | Lines         | ${total.lines.pct}% | ${total.lines.pct >= 80 ? '✅' : '❌'} |
+            
+            Minimum coverage threshold: 80%`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
 
   build-check:
     name: Build Check

@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Example configuration file for call-structure analyzer",
+  
+  "projectRoot": ".",
+  "tsconfig": "./tsconfig.json",
+  
+  "maxDepth": 15,
+  "includeNodeModules": false,
+  "includeTests": false,
+  "filterExternal": true,
+  
+  "exclude": [
+    ".*\\.test\\.ts$",
+    ".*\\.spec\\.ts$",
+    "node_modules/.*",
+    "dist/.*",
+    "coverage/.*"
+  ],
+  
+  "include": [
+    "src/.*\\.ts$",
+    "lib/.*\\.ts$"
+  ],
+  
+  "output": {
+    "format": "json",
+    "includeMetadata": true,
+    "includeMetrics": true
+  },
+  
+  "parallel": 4,
+  "cache": {
+    "enabled": true,
+    "directory": ".call-structure-cache"
+  },
+  
+  "callbacks": true,
+  "followImports": true,
+  
+  "entryPoints": [
+    {
+      "file": "src/index.ts",
+      "function": "main",
+      "maxDepth": 10
+    },
+    {
+      "file": "src/api/server.ts",
+      "function": "startServer",
+      "maxDepth": 12
+    },
+    {
+      "file": "src/cli/index.ts",
+      "function": "runCLI",
+      "exclude": [".*\\.test\\.ts$"]
+    }
+  ]
+}

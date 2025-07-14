@@ -64,3 +64,6 @@ examples/*/*.dot
 
 # Jest cache
 .jest/
+
+# Call structure cache
+.call-structure-cache/

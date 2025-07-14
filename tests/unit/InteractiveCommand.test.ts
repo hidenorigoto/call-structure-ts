@@ -1,14 +1,11 @@
 import { jest } from '@jest/globals';
-import inquirer from 'inquirer';
-import ora from 'ora';
-import * as fs from 'fs';
-import { glob } from 'glob';
 
-// Mock all dependencies
+// Mock all dependencies before any imports
 jest.mock('inquirer');
 jest.mock('ora');
 jest.mock('fs');
 jest.mock('glob');
+jest.mock('inquirer-autocomplete-prompt');
 jest.mock('../../src/analyzer/CallGraphAnalyzer');
 jest.mock('../../src/formatter/JsonFormatter');
 jest.mock('../../src/formatter/YamlFormatter');
@@ -16,6 +13,12 @@ jest.mock('../../src/formatter/MermaidFormatter');
 jest.mock('../../src/cli/commands/analyze');
 jest.mock('../../src/cli/commands/test');
 jest.mock('../../src/cli/commands/analyze-batch');
+
+// Now import the modules
+import inquirer from 'inquirer';
+import ora from 'ora';
+import * as fs from 'fs';
+import { glob } from 'glob';
 
 const mockedInquirer = inquirer as jest.Mocked<typeof inquirer>;
 const mockedOra = ora as unknown as jest.MockedFunction<typeof ora>;
@@ -27,6 +30,7 @@ import { interactiveCommand } from '../../src/cli/commands/interactive';
 
 describe('InteractiveCommand', () => {
   let mockSpinner: any;
+  let mockPrompt: jest.Mock<any>;
   
   beforeEach(() => {
     jest.clearAllMocks();
@@ -40,17 +44,20 @@ describe('InteractiveCommand', () => {
     };
     mockedOra.mockReturnValue(mockSpinner);
     
-    // Mock inquirer prompt
-    mockedInquirer.prompt = jest.fn() as any;
+    // Mock inquirer
+    mockPrompt = jest.fn();
+    mockedInquirer.prompt = mockPrompt as any;
+    mockedInquirer.registerPrompt = jest.fn();
     
     // Mock console methods
-    jest.spyOn(console, 'clear').mockImplementation();
-    jest.spyOn(console, 'log').mockImplementation();
+    jest.spyOn(console, 'clear').mockImplementation(() => {});
+    jest.spyOn(console, 'log').mockImplementation(() => {});
     
     // Default fs mocks
     mockedFs.existsSync.mockReturnValue(true);
     mockedFs.readFileSync.mockReturnValue('mock file content');
-    mockedFs.writeFileSync.mockImplementation();
+    mockedFs.writeFileSync.mockImplementation(() => {});
+    mockedFs.statSync.mockReturnValue({ mtime: new Date() } as any);
   });
   
   afterEach(() => {
@@ -60,7 +67,7 @@ describe('InteractiveCommand', () => {
   describe('Main Menu', () => {
     it('should display welcome message and main menu', async () => {
       // Mock exit action
-      (mockedInquirer.prompt as jest.Mock).mockResolvedValueOnce({ action: 'exit' });
+      mockPrompt.mockResolvedValueOnce({ action: 'exit' });
       
       await interactiveCommand({});
       
@@ -82,7 +89,7 @@ describe('InteractiveCommand', () => {
     });
     
     it('should exit when exit is selected', async () => {
-      (mockedInquirer.prompt as jest.Mock).mockResolvedValueOnce({ action: 'exit' });
+      mockPrompt.mockResolvedValueOnce({ action: 'exit' });
       
       await interactiveCommand({});
       
@@ -96,7 +103,7 @@ describe('InteractiveCommand', () => {
       mockedGlob.mockResolvedValue(['src/test.ts', 'src/another.ts']);
       
       // Mock inquirer prompts
-      (mockedInquirer.prompt as jest.Mock)
+      mockPrompt
         .mockResolvedValueOnce({ action: 'analyze' })
         .mockResolvedValueOnce({ file: 'src/test.ts' })
         .mockResolvedValueOnce({ func: { name: 'testFunction' } })
@@ -122,7 +129,7 @@ describe('InteractiveCommand', () => {
       
       // Mock analyzer
       const mockAnalyzer = {
-        analyzeFromEntryPoint: jest.fn().mockResolvedValue({
+        analyzeFromEntryPoint: jest.fn<any>().mockResolvedValue({
           nodes: [],
           edges: [],
           metadata: {}
@@ -155,7 +162,7 @@ describe('InteractiveCommand', () => {
   
   describe('Help System', () => {
     it('should display help when help is selected', async () => {
-      (mockedInquirer.prompt as jest.Mock)
+      mockPrompt
         .mockResolvedValueOnce({ action: 'help' })
         .mockResolvedValueOnce({ continue: '' })
         .mockResolvedValueOnce({ action: 'exit' });
@@ -172,7 +179,7 @@ describe('InteractiveCommand', () => {
     it('should handle errors gracefully', async () => {
       const error = new Error('Test error');
       
-      (mockedInquirer.prompt as jest.Mock)
+      mockPrompt
         .mockResolvedValueOnce({ action: 'analyze' })
         .mockRejectedValueOnce(error)
         .mockResolvedValueOnce({ continue: '' })
@@ -211,7 +218,7 @@ describe('InteractiveCommand', () => {
       mockedGlob.mockResolvedValue(files);
       
       // Mock autocomplete search
-      (mockedInquirer.prompt as jest.Mock)
+      mockPrompt
         .mockResolvedValueOnce({ action: 'analyze' })
         .mockImplementation(async (questions: any) => {
           if (questions[0].type === 'autocomplete') {
@@ -244,7 +251,7 @@ describe('InteractiveCommand', () => {
     it('should use provided project root', async () => {
       const projectRoot = '/custom/path';
       
-      (mockedInquirer.prompt as jest.Mock).mockResolvedValueOnce({ action: 'exit' });
+      mockPrompt.mockResolvedValueOnce({ action: 'exit' });
       
       await interactiveCommand({ projectRoot });
       

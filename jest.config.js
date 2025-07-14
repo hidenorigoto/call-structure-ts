@@ -8,12 +8,14 @@ module.exports = {
   ],
   testPathIgnorePatterns: [
     '/node_modules/',
-    '/dist/',
-    '/src/cli/commands/' // Ignore command files
+    '/dist/'
   ],
   transform: {
     '^.+\\.ts$': 'ts-jest'
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(inquirer|ora|inquirer-autocomplete-prompt)/)'
+  ],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',

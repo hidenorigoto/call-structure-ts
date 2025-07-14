@@ -6,6 +6,11 @@ module.exports = {
     '**/__tests__/**/*.ts',
     '**/?(*.)+(spec|test).ts'
   ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    '/src/cli/commands/' // Ignore command files
+  ],
   transform: {
     '^.+\\.ts$': 'ts-jest'
   },

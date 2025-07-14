@@ -13,6 +13,7 @@ import {
 } from '../types/CallGraph';
 import { logger, LogLevel } from '../utils/logger';
 import { analyzeCommand } from './commands/analyze';
+import { testCommand } from './commands/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
@@ -111,6 +112,25 @@ program
   .action(async options => {
     try {
       await validateCommand(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+// Test command
+program
+  .command('test')
+  .description('Test code structure against specifications')
+  .requiredOption('--spec <file>', 'Test specification file (YAML or Mermaid)')
+  .option('--target <dir>', 'Target directory to analyze', 'src/')
+  .option('--format <type>', 'Output format for results (text, json)', 'text')
+  .option('--tsconfig <path>', 'Path to tsconfig.json')
+  .option('--project-root <path>', 'Project root directory', '.')
+  .option('-d, --max-depth <depth>', 'Maximum analysis depth', '10')
+  .option('-v, --verbose', 'Show detailed error information')
+  .action(async options => {
+    try {
+      await testCommand(options);
     } catch (error) {
       handleError(error);
     }

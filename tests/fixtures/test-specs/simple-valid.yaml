@@ -1,0 +1,22 @@
+name: Simple Valid Test
+description: Test that validates a simple function call structure
+
+entryPoint:
+  file: src/simple.ts
+  function: main
+
+requiredEdges:
+  - from: main
+    to: helper
+    type: sync
+  - from: main
+    to: logger
+    type: sync
+
+requiredNodes:
+  - main
+  - helper
+  - logger
+
+maxDepth: 5
+maxComplexity: 10

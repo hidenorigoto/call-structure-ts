@@ -1,0 +1,28 @@
+name: Forbidden Edges Test
+description: Test that checks for forbidden dependencies
+
+entryPoint:
+  file: src/api/index.ts
+  function: createApi
+
+requiredEdges:
+  - from: createApi
+    to: ApiController
+    type: constructor
+
+forbiddenEdges:
+  # API should not directly call database
+  - from: ApiController.*
+    to: Database.*
+    
+  # No circular dependencies
+  - from: UserService.*
+    to: ApiController.*
+
+requiredNodes:
+  - createApi
+  - ApiController
+
+forbiddenNodes:
+  - "*deprecated*"
+  - "*legacy*"

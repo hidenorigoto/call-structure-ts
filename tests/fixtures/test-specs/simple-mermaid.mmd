@@ -1,0 +1,7 @@
+%% test-spec: { name: "Mermaid Test Specification", description: "Test specification defined in Mermaid format", entryPoint: { file: "src/simple.ts", function: "main" }, forbiddenNodes: ["*test*"], maxDepth: 3 } %%
+
+flowchart TD
+    main[main] --> helper[helper]
+    main --> logger[logger]
+    helper --> utils[utils]
+    logger -.-> console[console]

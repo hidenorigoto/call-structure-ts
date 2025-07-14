@@ -74,11 +74,16 @@ describe('CLI Test Command', () => {
       const result = runCli(`test --spec ${specPath} --format json`);
       
       // Extract only the JSON output (after the progress messages)
-      const jsonMatch = result.stdout.match(/\{[\s\S]*\}$/);
-      expect(jsonMatch).toBeTruthy();
+      // Look for a complete JSON object by matching balanced braces
+      const jsonStart = result.stdout.indexOf('{');
+      const jsonEnd = result.stdout.lastIndexOf('}');
       
-      if (jsonMatch) {
-        const json = JSON.parse(jsonMatch[0]);
+      expect(jsonStart).toBeGreaterThan(-1);
+      expect(jsonEnd).toBeGreaterThan(jsonStart);
+      
+      if (jsonStart > -1 && jsonEnd > jsonStart) {
+        const jsonString = result.stdout.substring(jsonStart, jsonEnd + 1);
+        const json = JSON.parse(jsonString);
         expect(json).toHaveProperty('isValid');
         expect(json).toHaveProperty('errors');
         expect(json).toHaveProperty('warnings');

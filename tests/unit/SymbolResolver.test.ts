@@ -451,6 +451,402 @@ describe('SymbolResolver', () => {
     });
   });
 
+  describe('resolveModulePath', () => {
+    it('should resolve module paths correctly', () => {
+      const helperFile = project.createSourceFile('lib/helper.ts', `
+        export function helperFunction() {
+          return 'helper';
+        }
+      `);
+
+      const mainFile = project.createSourceFile('main.ts', `
+        import { helperFunction } from './lib/helper';
+        
+        function main() {
+          helperFunction();
+        }
+      `);
+
+      const resolved = resolver.resolveModulePath('./lib/helper', '/main.ts');
+      expect(resolved).toBeDefined();
+      expect(resolved!.getFilePath()).toBe('/lib/helper.ts');
+    });
+
+    it('should return undefined for non-existent modules', () => {
+      const mainFile = project.createSourceFile('main.ts', `
+        // No actual import, just testing resolution
+      `);
+
+      const resolved = resolver.resolveModulePath('./nonexistent', '/main.ts');
+      expect(resolved).toBeUndefined();
+    });
+
+    it('should handle module resolution errors gracefully', () => {
+      const resolved = resolver.resolveModulePath('./missing', '/nonexistent.ts');
+      expect(resolved).toBeUndefined();
+    });
+
+    it('should cache module resolution results', () => {
+      const helperFile = project.createSourceFile('utils/helper.ts', `
+        export function utilFunction() {
+          return 'util';
+        }
+      `);
+
+      const mainFile = project.createSourceFile('app.ts', `
+        import { utilFunction } from './utils/helper';
+      `);
+
+      // First resolution
+      const resolved1 = resolver.resolveModulePath('./utils/helper', '/app.ts');
+      const stats1 = resolver.getCacheStats();
+
+      // Second resolution should use cache
+      const resolved2 = resolver.resolveModulePath('./utils/helper', '/app.ts');
+      const stats2 = resolver.getCacheStats();
+
+      expect(resolved1).toBe(resolved2);
+      expect(stats2.moduleCacheSize).toBeGreaterThan(0);
+    });
+  });
+
+  describe('error handling and edge cases', () => {
+    it('should handle identifiers with no symbols gracefully', () => {
+      const sourceFile = project.createSourceFile('test.ts', `
+        function test() {
+          // This creates an identifier that may not have a symbol
+          const x = unknownVariable;
+        }
+      `);
+
+      const identifiers = sourceFile.getDescendantsOfKind(SyntaxKind.Identifier);
+      const unknownIdentifier = identifiers.find(id => id.getText() === 'unknownVariable');
+
+      if (unknownIdentifier) {
+        const resolved = resolver.resolveIdentifier(unknownIdentifier);
+        expect(resolved).toBeUndefined();
+      }
+    });
+
+    it('should handle property access on undefined types', () => {
+      const sourceFile = project.createSourceFile('test.ts', `
+        function test() {
+          const obj: any = undefined;
+          obj.someProperty();
+        }
+      `);
+
+      const propertyAccess = sourceFile.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)[0];
+      if (propertyAccess) {
+        const resolved = resolver.resolvePropertyAccess(propertyAccess);
+        // Should handle gracefully without throwing
+        expect(resolved).toBeUndefined();
+      }
+    });
+
+    it('should handle import specifier resolution errors', () => {
+      // Create a file with an import that can't be resolved
+      const sourceFile = project.createSourceFile('test.ts', `
+        import { nonExistentFunction } from './nonexistent';
+        
+        function test() {
+          nonExistentFunction();
+        }
+      `);
+
+      const callExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
+      if (callExpressions.length > 0) {
+        const expression = callExpressions[0].getExpression();
+        if (Node.isIdentifier(expression)) {
+          const resolved = resolver.resolveIdentifier(expression);
+          // Should handle gracefully
+          expect(resolved).toBeUndefined();
+        }
+      }
+    });
+
+    it('should handle symbols with no declarations', () => {
+      // This tests the edge case where a symbol exists but has no declarations
+      const sourceFile = project.createSourceFile('test.ts', `
+        declare function declaredFunction(): void;
+        
+        function test() {
+          declaredFunction();
+        }
+      `);
+
+      const callExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
+      if (callExpressions.length > 0) {
+        const expression = callExpressions[0].getExpression();
+        if (Node.isIdentifier(expression)) {
+          const resolved = resolver.resolveIdentifier(expression);
+          // Should handle symbols that might not have accessible declarations
+          expect(resolved).toBeDefined();
+        }
+      }
+    });
+  });
+
+  describe('private method coverage', () => {
+    describe('resolveSymbol', () => {
+      it('should handle symbols with multiple declarations', () => {
+        const sourceFile = project.createSourceFile('test.ts', `
+          function overloaded(x: string): string;
+          function overloaded(x: number): number;
+          function overloaded(x: any): any {
+            return x;
+          }
+          
+          function test() {
+            overloaded('test');
+          }
+        `);
+
+        const callExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
+        if (callExpressions.length > 0) {
+          const expression = callExpressions[0].getExpression();
+          if (Node.isIdentifier(expression)) {
+            const resolved = resolver.resolveIdentifier(expression);
+            expect(resolved).toBeDefined();
+            expect(Node.isFunctionDeclaration(resolved!)).toBe(true);
+          }
+        }
+      });
+    });
+
+    describe('resolveImportedSymbol', () => {
+      it('should handle import clause (default import)', () => {
+        const defaultFile = project.createSourceFile('default.ts', `
+          export default class DefaultClass {
+            method() {
+              return 'default';
+            }
+          }
+        `);
+
+        const mainFile = project.createSourceFile('main.ts', `
+          import DefaultClass from './default';
+          
+          function test() {
+            const instance = new DefaultClass();
+            instance.method();
+          }
+        `);
+
+        const constructorCalls = mainFile.getDescendantsOfKind(SyntaxKind.NewExpression);
+        if (constructorCalls.length > 0) {
+          const expression = constructorCalls[0].getExpression();
+          if (Node.isIdentifier(expression)) {
+            const resolved = resolver.resolveIdentifier(expression);
+            expect(resolved).toBeDefined();
+            expect(resolved!.getSourceFile().getFilePath()).toBe('/default.ts');
+          }
+        }
+      });
+
+      it('should handle namespace import without resolving further', () => {
+        const utilsFile = project.createSourceFile('utils.ts', `
+          export function util1() { return 'util1'; }
+          export function util2() { return 'util2'; }
+        `);
+
+        const mainFile = project.createSourceFile('main.ts', `
+          import * as Utils from './utils';
+          
+          function test() {
+            // Test namespace identifier resolution
+            const ns = Utils;
+          }
+        `);
+
+        const identifiers = mainFile.getDescendantsOfKind(SyntaxKind.Identifier);
+        const utilsIdentifier = identifiers.find(id => id.getText() === 'Utils' && 
+          !Node.isImportSpecifier(id.getParent()) && 
+          !Node.isNamespaceImport(id.getParent()));
+
+        if (utilsIdentifier) {
+          const resolved = resolver.resolveIdentifier(utilsIdentifier);
+          // Should resolve to the namespace import declaration
+          expect(resolved).toBeDefined();
+        }
+      });
+    });
+
+    describe('findExportedSymbol', () => {
+      it('should find specific named exports', () => {
+        const moduleFile = project.createSourceFile('module.ts', `
+          export const namedExport = 'named';
+          export default 'default';
+          export function namedFunction() { return 'function'; }
+        `);
+
+        const mainFile = project.createSourceFile('main.ts', `
+          import { namedExport, namedFunction } from './module';
+          
+          function test() {
+            console.log(namedExport);
+            namedFunction();
+          }
+        `);
+
+        const callExpressions = mainFile.getDescendantsOfKind(SyntaxKind.CallExpression);
+        const namedFunctionCall = callExpressions.find(call => {
+          const expr = call.getExpression();
+          return Node.isIdentifier(expr) && expr.getText() === 'namedFunction';
+        });
+
+        if (namedFunctionCall) {
+          const expression = namedFunctionCall.getExpression();
+          if (Node.isIdentifier(expression)) {
+            const resolved = resolver.resolveIdentifier(expression);
+            expect(resolved).toBeDefined();
+            expect(Node.isFunctionDeclaration(resolved!)).toBe(true);
+          }
+        }
+      });
+
+      it('should find default exports', () => {
+        const defaultFile = project.createSourceFile('defaultModule.ts', `
+          export default function defaultExport() {
+            return 'default';
+          }
+        `);
+
+        const mainFile = project.createSourceFile('main.ts', `
+          import defaultExport from './defaultModule';
+          
+          function test() {
+            defaultExport();
+          }
+        `);
+
+        const callExpressions = mainFile.getDescendantsOfKind(SyntaxKind.CallExpression);
+        if (callExpressions.length > 0) {
+          const expression = callExpressions[0].getExpression();
+          if (Node.isIdentifier(expression)) {
+            const resolved = resolver.resolveIdentifier(expression);
+            expect(resolved).toBeDefined();
+            expect(resolved!.getSourceFile().getFilePath()).toBe('/defaultModule.ts');
+          }
+        }
+      });
+    });
+
+    describe('getFullyQualifiedName edge cases', () => {
+      it('should handle anonymous classes', () => {
+        const sourceFile = project.createSourceFile('test.ts', `
+          const AnonymousClass = class {
+            method() {
+              return 'anonymous';
+            }
+          };
+        `);
+
+        const classes = sourceFile.getDescendantsOfKind(SyntaxKind.ClassExpression);
+        if (classes.length > 0) {
+          const fqn = resolver.getFullyQualifiedName(classes[0]);
+          // Anonymous class expressions get a fallback name based on kind and line
+          expect(fqn).toMatch(/\/test\.ts#ClassExpression:\d+/);
+        }
+      });
+
+      it('should handle variable declarations without function initializers', () => {
+        const sourceFile = project.createSourceFile('test.ts', `
+          const simpleVariable = 'not a function';
+          const objectVariable = { prop: 'value' };
+        `);
+
+        const variables = sourceFile.getVariableDeclarations();
+        const simpleVar = variables.find(v => v.getName() === 'simpleVariable');
+        const objectVar = variables.find(v => v.getName() === 'objectVariable');
+
+        if (simpleVar) {
+          const fqn = resolver.getFullyQualifiedName(simpleVar);
+          expect(fqn).toBe('/test.ts#simpleVariable');
+        }
+
+        if (objectVar) {
+          const fqn = resolver.getFullyQualifiedName(objectVar);
+          expect(fqn).toBe('/test.ts#objectVariable');
+        }
+      });
+
+      it('should handle standalone arrow functions', () => {
+        const sourceFile = project.createSourceFile('test.ts', `
+          const callback = (x: number) => x * 2;
+          
+          function test() {
+            [1, 2, 3].map((x: number) => x * 2);
+          }
+        `);
+
+        const arrowFunctions = sourceFile.getDescendantsOfKind(SyntaxKind.ArrowFunction);
+        if (arrowFunctions.length > 1) {
+          // Test the inline arrow function (not assigned to variable)
+          const inlineArrow = arrowFunctions.find(af => {
+            const parent = af.getParent();
+            return !Node.isVariableDeclaration(parent);
+          });
+
+          if (inlineArrow) {
+            const fqn = resolver.getFullyQualifiedName(inlineArrow);
+            expect(fqn).toMatch(/\/test\.ts#anonymous:\d+/);
+          }
+        }
+      });
+
+      it('should handle unknown node types with fallback', () => {
+        const sourceFile = project.createSourceFile('test.ts', `
+          interface TestInterface {
+            prop: string;
+          }
+        `);
+
+        const interfaces = sourceFile.getDescendantsOfKind(SyntaxKind.InterfaceDeclaration);
+        if (interfaces.length > 0) {
+          const fqn = resolver.getFullyQualifiedName(interfaces[0]);
+          expect(fqn).toMatch(/\/test\.ts#InterfaceDeclaration:\d+/);
+        }
+      });
+    });
+
+    describe('isFunctionLikeNode', () => {
+      it('should correctly identify all function-like nodes', () => {
+        const sourceFile = project.createSourceFile('test.ts', `
+          function regularFunction() {}
+          
+          class TestClass {
+            method() {}
+            get getter() { return 'value'; }
+            set setter(value: string) {}
+            constructor() {}
+          }
+          
+          const arrow = () => {};
+          const funcExpr = function() {};
+        `);
+
+        const functionDecl = sourceFile.getFunctions()[0];
+        const classDecl = sourceFile.getClasses()[0];
+        const method = classDecl.getMethods()[0];
+        const getter = classDecl.getGetAccessors()[0];
+        const setter = classDecl.getSetAccessors()[0];
+        const constructor = classDecl.getConstructors()[0];
+        const arrowFunction = sourceFile.getDescendantsOfKind(SyntaxKind.ArrowFunction)[0];
+        const functionExpression = sourceFile.getDescendantsOfKind(SyntaxKind.FunctionExpression)[0];
+
+        // Test the private method through public interface
+        expect(resolver.getFullyQualifiedName(functionDecl)).toContain('regularFunction');
+        expect(resolver.getFullyQualifiedName(method)).toContain('method');
+        expect(resolver.getFullyQualifiedName(getter)).toContain('get:getter');
+        expect(resolver.getFullyQualifiedName(setter)).toContain('set:setter');
+        expect(resolver.getFullyQualifiedName(constructor)).toContain('constructor');
+        expect(resolver.getFullyQualifiedName(arrowFunction)).toContain('arrow');
+        expect(resolver.getFullyQualifiedName(functionExpression)).toContain('funcExpr');
+      });
+    });
+  });
+
   describe('edge cases', () => {
     it('should handle circular imports gracefully', () => {
       const fileA = project.createSourceFile('a.ts', `

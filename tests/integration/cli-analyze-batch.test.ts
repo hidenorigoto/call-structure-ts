@@ -10,7 +10,7 @@ describe('CLI Analyze-Batch Command', () => {
   
   function runCli(args: string): { stdout: string; stderr: string; code: number } {
     try {
-      const stdout = execSync(`node ${cliPath} ${args}`, {
+      const stdout = execSync(`node ${cliPath} ${args} 2>&1`, {
         encoding: 'utf-8',
         env: { ...process.env, NODE_ENV: 'test' },
         cwd: path.join(__dirname, '../../') // Run from project root
@@ -48,7 +48,7 @@ describe('CLI Analyze-Batch Command', () => {
       const result = runCli('analyze-batch');
       
       expect(result.code).toBe(1);
-      expect(result.stderr).toContain("required option '--config <file>' not specified");
+      expect(result.stdout).toContain("required option '--config <file>' not specified");
     });
     
     it('should error on missing config file', () => {
@@ -79,7 +79,7 @@ describe('CLI Analyze-Batch Command', () => {
         common_options: {
           max_depth: 5,
           format: 'json',
-          projectRoot: '.'
+          projectRoot: path.join(__dirname, '../../')
         }
       };
       
@@ -129,7 +129,10 @@ describe('CLI Analyze-Batch Command', () => {
             function: 'helper',
             output: 'simple-helper.json'
           }
-        ]
+        ],
+        common_options: {
+          projectRoot: path.join(__dirname, '../../')
+        }
       };
       
       fs.writeFileSync(configPath, yaml.dump(config));
@@ -138,7 +141,8 @@ describe('CLI Analyze-Batch Command', () => {
       
       // Should complete successfully despite one failure
       expect(result.code).toBe(0);
-      expect(result.stdout).toContain('Failed: src/nonexistent.ts#foo');
+      // Error messages are now merged into stdout with 2>&1
+      expect(result.stdout).toContain('✗ Failed: src/nonexistent.ts#foo');
       expect(result.stdout).toContain('Success: 2');
       expect(result.stdout).toContain('Failed: 1');
       
@@ -164,7 +168,10 @@ describe('CLI Analyze-Batch Command', () => {
             function: 'main',
             output: 'simple-main.json'
           }
-        ]
+        ],
+        common_options: {
+          projectRoot: path.join(__dirname, '../../')
+        }
       };
       
       fs.writeFileSync(configPath, yaml.dump(config));
@@ -172,7 +179,7 @@ describe('CLI Analyze-Batch Command', () => {
       const result = runCli(`analyze-batch --config ${configPath} --output-dir ${outputDir} --parallel 1`);
       
       expect(result.code).toBe(1);
-      expect(result.stdout).toContain('Failed: src/nonexistent.ts#foo');
+      expect(result.stdout).toContain('✗ Failed: src/nonexistent.ts#foo');
     });
   });
   
@@ -186,7 +193,10 @@ describe('CLI Analyze-Batch Command', () => {
           file: 'src/simple.ts',
           function: i % 2 === 0 ? 'main' : 'helper',
           output: `output-${i}.json`
-        }))
+        })),
+        common_options: {
+          projectRoot: path.join(__dirname, '../../')
+        }
       };
       
       fs.writeFileSync(configPath, yaml.dump(config));
@@ -213,7 +223,10 @@ describe('CLI Analyze-Batch Command', () => {
             function: 'main',
             output: 'main.json'
           }
-        ]
+        ],
+        common_options: {
+          projectRoot: path.join(__dirname, '../../')
+        }
       };
       
       fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
@@ -269,7 +282,10 @@ describe('CLI Analyze-Batch Command', () => {
             output: 'async.mmd',
             options: { format: 'mermaid' }
           }
-        ]
+        ],
+        common_options: {
+          projectRoot: path.join(__dirname, '../../')
+        }
       };
       
       fs.writeFileSync(configPath, yaml.dump(config));

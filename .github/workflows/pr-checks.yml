@@ -55,19 +55,26 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const coverage = JSON.parse(fs.readFileSync('./coverage/coverage-summary.json', 'utf8'));
+            const path = './coverage/coverage-summary.json';
+            
+            if (!fs.existsSync(path)) {
+              console.log('Coverage file not found, skipping coverage comment');
+              return;
+            }
+            
+            const coverage = JSON.parse(fs.readFileSync(path, 'utf8'));
             const total = coverage.total;
             
             const comment = `## Test Coverage Report
             
             | Coverage Type | Percentage | Status |
             |---------------|------------|---------|
-            | Statements    | ${total.statements.pct}% | ${total.statements.pct >= 80 ? '✅' : '❌'} |
-            | Branches      | ${total.branches.pct}% | ${total.branches.pct >= 80 ? '✅' : '❌'} |
-            | Functions     | ${total.functions.pct}% | ${total.functions.pct >= 80 ? '✅' : '❌'} |
-            | Lines         | ${total.lines.pct}% | ${total.lines.pct >= 80 ? '✅' : '❌'} |
+            | Statements    | ${total.statements.pct}% | ${total.statements.pct >= 83 ? '✅' : '❌'} |
+            | Branches      | ${total.branches.pct}% | ${total.branches.pct >= 74 ? '✅' : '❌'} |
+            | Functions     | ${total.functions.pct}% | ${total.functions.pct >= 86 ? '✅' : '❌'} |
+            | Lines         | ${total.lines.pct}% | ${total.lines.pct >= 84 ? '✅' : '❌'} |
             
-            Minimum coverage threshold: 80%`;
+            Current coverage thresholds: 74% branches, 86% functions, 84% lines, 83% statements`;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,

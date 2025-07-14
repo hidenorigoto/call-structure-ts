@@ -1,0 +1,13 @@
+#!/bin/sh
+
+echo "Running pre-push checks..."
+
+# Run comprehensive verification
+echo "Running full verification (lint, type-check, and tests)..."
+npm run verify
+if [ $? -ne 0 ]; then
+  echo "❌ Pre-push verification failed. Please fix the errors before pushing."
+  exit 1
+fi
+
+echo "✅ All pre-push checks passed!"

@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# Run lint-staged for linting and formatting
+echo "Running lint-staged..."
+npx lint-staged
+if [ $? -ne 0 ]; then
+  echo "❌ Linting/formatting failed. Please fix the errors before committing."
+  exit 1
+fi
+
+# Run type check on entire project
+echo "Running type check..."
+npm run type-check
+if [ $? -ne 0 ]; then
+  echo "❌ Type checking failed. Please fix the errors before committing."
+  exit 1
+fi
+
+# Run tests
+echo "Running tests..."
+npm test
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed. Please fix the failing tests before committing."
+  exit 1
+fi
+
+echo "✅ All checks passed!"

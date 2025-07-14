@@ -15,6 +15,7 @@ import { logger, LogLevel } from '../utils/logger';
 import { analyzeCommand } from './commands/analyze';
 import { testCommand } from './commands/test';
 import { analyzeBatchCommand } from './commands/analyze-batch';
+import { interactiveCommand } from './commands/interactive';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
@@ -340,13 +341,6 @@ async function validateCommand(options: any): Promise<void> {
   }
 }
 
-async function interactiveCommand(_options: any): Promise<void> {
-  // This would require additional dependencies like inquirer
-  // For now, just show a message
-  console.log('Interactive mode is not yet implemented.');
-  console.log('Use the analyze command with specific entry points.');
-  console.log('Example: call-structure analyze -e "src/index.ts#main" -f mermaid');
-}
 
 function createProjectContext(options: any): ProjectContext {
   const projectRoot = path.resolve(options.projectRoot || '.');

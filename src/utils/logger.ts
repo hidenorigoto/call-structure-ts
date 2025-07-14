@@ -9,6 +9,7 @@ export enum LogLevel {
 
 export class Logger {
   private level: LogLevel = LogLevel.INFO;
+  private progressEnabled: boolean = true;
 
   setLevel(level: LogLevel): void {
     this.level = level;
@@ -16,6 +17,10 @@ export class Logger {
 
   getLevel(): LogLevel {
     return this.level;
+  }
+
+  setProgressEnabled(enabled: boolean): void {
+    this.progressEnabled = enabled;
   }
 
   debug(message: string, ...args: unknown[]): void {
@@ -47,7 +52,9 @@ export class Logger {
   }
 
   progress(message: string, ...args: unknown[]): void {
-    console.log(chalk.cyan('�'), message, ...args);
+    if (this.progressEnabled && this.level <= LogLevel.INFO) {
+      console.log(chalk.cyan('�'), message, ...args);
+    }
   }
 }
 

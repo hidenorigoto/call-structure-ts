@@ -28,6 +28,8 @@ program
   .option('-v, --verbose', 'Enable verbose logging')
   .option('-q, --quiet', 'Disable all output except errors')
   .option('--debug', 'Enable debug logging')
+  .option('--progress', 'Show progress indicators (enabled by default)')
+  .option('--no-progress', 'Disable progress indicators')
   .hook('preAction', thisCommand => {
     const opts = thisCommand.opts();
     if (opts.debug) {
@@ -36,6 +38,11 @@ program
       logger.setLevel(LogLevel.INFO);
     } else if (opts.quiet) {
       logger.setLevel(LogLevel.ERROR);
+    }
+    
+    // Handle progress option
+    if (opts.progress === false) {
+      logger.setProgressEnabled(false);
     }
   });
 
@@ -58,8 +65,24 @@ program
   .option('--metrics', 'Include analysis metrics')
   .option('--tsconfig <path>', 'Path to tsconfig.json')
   .option('--project-root <path>', 'Project root directory', '.')
+  .option('--filter-external', 'Exclude external library calls')
+  .option('--parallel <n>', 'Number of parallel workers (for future use)', parseInt)
+  .option('--cache <dir>', 'Cache directory for incremental analysis')
+  .option('--config <file>', 'Load additional options from configuration file')
   .action(async options => {
     try {
+      // Load config file if specified
+      logger.debug('Analyze command options:', options);
+      if (options.config) {
+        logger.debug('Loading config file:', options.config);
+        try {
+          const configOptions = await loadConfigFile(options.config);
+          options = { ...configOptions, ...options }; // CLI options override config
+        } catch (error) {
+          handleError(error);
+          return;
+        }
+      }
       await analyzeCommand(options);
     } catch (error) {
       handleError(error);
@@ -361,6 +384,47 @@ function handleError(error: any): void {
   }
 
   process.exit(1);
+}
+
+/**
+ * Load configuration from a file (YAML or JSON)
+ */
+async function loadConfigFile(configPath: string): Promise<any> {
+  const absolutePath = path.resolve(configPath);
+  
+  if (!fs.existsSync(absolutePath)) {
+    throw new CallGraphError(
+      `Configuration file not found: ${configPath}`,
+      'CONFIG_FILE_NOT_FOUND',
+      configPath
+    );
+  }
+  
+  const content = fs.readFileSync(absolutePath, 'utf-8');
+  const ext = path.extname(absolutePath).toLowerCase();
+  
+  try {
+    if (ext === '.yaml' || ext === '.yml') {
+      return yaml.load(content);
+    } else if (ext === '.json') {
+      return JSON.parse(content);
+    } else {
+      throw new CallGraphError(
+        `Unsupported configuration format: ${ext}. Use .yaml, .yml, or .json`,
+        'UNSUPPORTED_CONFIG_FORMAT',
+        configPath
+      );
+    }
+  } catch (error) {
+    if (error instanceof CallGraphError) {
+      throw error;
+    }
+    throw new CallGraphError(
+      `Failed to parse configuration file: ${error}`,
+      'CONFIG_PARSE_ERROR',
+      configPath
+    );
+  }
 }
 
 // Error handling for unhandled rejections

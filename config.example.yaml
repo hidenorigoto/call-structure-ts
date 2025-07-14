@@ -1,0 +1,53 @@
+# Example configuration file for call-structure analyzer
+# This file demonstrates all available configuration options
+
+# Project configuration
+projectRoot: "."
+tsconfig: "./tsconfig.json"
+
+# Analysis options
+maxDepth: 15
+includeNodeModules: false
+includeTests: false
+filterExternal: true
+
+# Pattern matching
+exclude:
+  - ".*\\.test\\.ts$"
+  - ".*\\.spec\\.ts$"
+  - "node_modules/.*"
+  - "dist/.*"
+  - "coverage/.*"
+
+include:
+  - "src/.*\\.ts$"
+  - "lib/.*\\.ts$"
+
+# Output options
+output:
+  format: "json"
+  includeMetadata: true
+  includeMetrics: true
+
+# Performance options
+parallel: 4
+cache:
+  enabled: true
+  directory: ".call-structure-cache"
+
+# Analysis behavior
+callbacks: true
+followImports: true
+
+# Example entry points for batch processing
+entryPoints:
+  - file: "src/index.ts"
+    function: "main"
+    maxDepth: 10
+  - file: "src/api/server.ts"
+    function: "startServer"
+    maxDepth: 12
+  - file: "src/cli/index.ts"
+    function: "runCLI"
+    exclude:
+      - ".*\\.test\\.ts$"

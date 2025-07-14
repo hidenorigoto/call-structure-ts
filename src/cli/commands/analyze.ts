@@ -26,6 +26,13 @@ export interface AnalyzeOptions {
   metrics?: boolean;
   tsconfig?: string;
   projectRoot: string;
+  filterExternal?: boolean;
+  parallel?: number;
+  cache?: string;
+  config?: string;
+  progress?: boolean;
+  debug?: boolean;
+  quiet?: boolean;
 }
 
 export async function analyzeCommand(options: AnalyzeOptions): Promise<void> {
@@ -163,6 +170,22 @@ function createAnalysisOptions(options: AnalyzeOptions): CallGraphAnalysisOption
 
   if (options.include) {
     analysisOptions.includePatterns = options.include.map((pattern: string) => new RegExp(pattern));
+  }
+
+  // Add support for filtering external calls
+  if (options.filterExternal) {
+    // Add common external library patterns to exclude
+    const externalPatterns = [
+      /node_modules/,
+      /@types\//,
+      /\.d\.ts$/,
+    ];
+    
+    if (analysisOptions.excludePatterns) {
+      analysisOptions.excludePatterns.push(...externalPatterns);
+    } else {
+      analysisOptions.excludePatterns = externalPatterns;
+    }
   }
 
   return analysisOptions;

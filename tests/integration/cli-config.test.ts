@@ -40,23 +40,6 @@ describe('CLI Configuration Loading', () => {
     }
   });
   
-  describe('Global Configuration', () => {
-    it('should load global config with --config flag', () => {
-      const configPath = path.join(tempDir, 'global-config.yaml');
-      const config = {
-        maxDepth: 25,
-        filterExternal: true,
-        exclude: ['test/**', 'spec/**']
-      };
-      
-      fs.writeFileSync(configPath, yaml.dump(config));
-      
-      const result = runCli(`--config ${configPath} analyze -e src/simple.ts#main`);
-      
-      // Should run without error
-      expect(result.code).toBeDefined();
-    });
-  });
   
   describe('Debug and Quiet Modes', () => {
     it('should show debug output with --debug flag', () => {
@@ -118,7 +101,13 @@ describe('CLI Configuration Loading', () => {
       expect(result.code).toBeDefined();
       // Output should be JSON format, not YAML
       if (result.code === 0 && result.stdout.includes('{')) {
-        expect(() => JSON.parse(result.stdout.match(/\{[\s\S]*\}$/)?.[0] || '')).not.toThrow();
+        // Extract JSON from output (similar to cli-test-command.test.ts)
+        const jsonStart = result.stdout.indexOf('{');
+        const jsonEnd = result.stdout.lastIndexOf('}');
+        if (jsonStart > -1 && jsonEnd > jsonStart) {
+          const jsonString = result.stdout.substring(jsonStart, jsonEnd + 1);
+          expect(() => JSON.parse(jsonString)).not.toThrow();
+        }
       }
     });
   });

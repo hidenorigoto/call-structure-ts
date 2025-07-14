@@ -183,10 +183,12 @@ describe('Logger', () => {
     });
 
     describe('progress method', () => {
-      it('should always log progress messages (no level filtering)', () => {
-        const levels = [LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR];
+      it('should log progress messages when level <= INFO', () => {
+        const shouldLog = [LogLevel.DEBUG, LogLevel.INFO];
+        const shouldNotLog = [LogLevel.WARN, LogLevel.ERROR];
         
-        levels.forEach(level => {
+        // Test levels that should show progress
+        shouldLog.forEach(level => {
           consoleSpy.log.mockClear();
           testLogger.setLevel(level);
           testLogger.progress('Test progress message');
@@ -195,6 +197,15 @@ describe('Logger', () => {
             expect.any(String), // Chalk-styled string
             'Test progress message'
           );
+        });
+        
+        // Test levels that should not show progress
+        shouldNotLog.forEach(level => {
+          consoleSpy.log.mockClear();
+          testLogger.setLevel(level);
+          testLogger.progress('Test progress message');
+          
+          expect(consoleSpy.log).not.toHaveBeenCalled();
         });
       });
     });

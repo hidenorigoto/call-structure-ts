@@ -30,7 +30,6 @@ program
   .option('--debug', 'Enable debug logging')
   .option('--progress', 'Show progress indicators (enabled by default)')
   .option('--no-progress', 'Disable progress indicators')
-  .option('--config <file>', 'Load global configuration from file')
   .hook('preAction', thisCommand => {
     const opts = thisCommand.opts();
     if (opts.debug) {
@@ -73,9 +72,16 @@ program
   .action(async options => {
     try {
       // Load config file if specified
+      logger.debug('Analyze command options:', options);
       if (options.config) {
-        const configOptions = await loadConfigFile(options.config);
-        options = { ...configOptions, ...options }; // CLI options override config
+        logger.debug('Loading config file:', options.config);
+        try {
+          const configOptions = await loadConfigFile(options.config);
+          options = { ...configOptions, ...options }; // CLI options override config
+        } catch (error) {
+          handleError(error);
+          return;
+        }
       }
       await analyzeCommand(options);
     } catch (error) {

@@ -4,11 +4,11 @@ export function main(): void {
   asyncHelper();
 }
 
-function helper(): string {
+export function helper(): string {
   return 'helper result';
 }
 
-async function asyncHelper(): Promise<string> {
+export async function asyncHelper(): Promise<string> {
   await new Promise(resolve => setTimeout(resolve, 100));
   return 'async helper result';
 }

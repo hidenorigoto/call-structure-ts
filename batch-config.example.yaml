@@ -1,0 +1,47 @@
+# Example batch configuration for analyze-batch command
+# This file demonstrates how to analyze multiple entry points in a single run
+
+# Define entry points to analyze
+entry_points:
+  # Basic entry point
+  - file: src/api/index.ts
+    function: main
+    output: api-main.json
+    
+  # Class method entry point
+  - file: src/services/UserService.ts
+    className: UserService
+    function: createUser
+    output: user-service-create.json
+    options:
+      maxDepth: 15
+      format: yaml
+      includeMetrics: true
+      
+  # Entry point with custom exclusions
+  - file: src/controllers/AuthController.ts
+    function: handleLogin
+    output: auth-controller-login.json
+    options:
+      excludePatterns:
+        - ".*\\.test\\.ts$"
+        - ".*mock.*"
+      
+  # Mermaid output format
+  - file: src/utils/Logger.ts
+    function: log
+    output: logger.mmd
+    options:
+      format: mermaid
+      maxDepth: 5
+
+# Common options applied to all entry points (can be overridden per entry point)
+common_options:
+  max_depth: 10
+  format: json
+  exclude_patterns:
+    - "node_modules/**"
+    - "**/*.spec.ts"
+  includeMetrics: false
+  projectRoot: .
+  tsconfig: ./tsconfig.json

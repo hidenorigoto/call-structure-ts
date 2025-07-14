@@ -1,0 +1,51 @@
+{
+  "entry_points": [
+    {
+      "file": "src/api/index.ts",
+      "function": "main",
+      "output": "api-main.json"
+    },
+    {
+      "file": "src/services/UserService.ts",
+      "className": "UserService",
+      "function": "createUser",
+      "output": "user-service-create.json",
+      "options": {
+        "maxDepth": 15,
+        "format": "yaml",
+        "includeMetrics": true
+      }
+    },
+    {
+      "file": "src/controllers/AuthController.ts",
+      "function": "handleLogin",
+      "output": "auth-controller-login.json",
+      "options": {
+        "excludePatterns": [
+          ".*\\.test\\.ts$",
+          ".*mock.*"
+        ]
+      }
+    },
+    {
+      "file": "src/utils/Logger.ts",
+      "function": "log",
+      "output": "logger.mmd",
+      "options": {
+        "format": "mermaid",
+        "maxDepth": 5
+      }
+    }
+  ],
+  "common_options": {
+    "max_depth": 10,
+    "format": "json",
+    "exclude_patterns": [
+      "node_modules/**",
+      "**/*.spec.ts"
+    ],
+    "includeMetrics": false,
+    "projectRoot": ".",
+    "tsconfig": "./tsconfig.json"
+  }
+}

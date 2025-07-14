@@ -14,6 +14,7 @@ import {
 import { logger, LogLevel } from '../utils/logger';
 import { analyzeCommand } from './commands/analyze';
 import { testCommand } from './commands/test';
+import { analyzeBatchCommand } from './commands/analyze-batch';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
@@ -120,6 +121,27 @@ program
   .action(async options => {
     try {
       await batchCommand(options);
+    } catch (error) {
+      handleError(error);
+    }
+  });
+
+// Analyze-batch command
+program
+  .command('analyze-batch')
+  .description('Analyze multiple entry points from configuration')
+  .requiredOption('--config <file>', 'Batch configuration file')
+  .option('--output-dir <dir>', 'Output directory', './results')
+  .option('--parallel <n>', 'Number of parallel analyses', parseInt, 4)
+  .option('--continue-on-error', 'Continue if an analysis fails')
+  .action(async options => {
+    try {
+      await analyzeBatchCommand({
+        config: options.config,
+        outputDir: options.outputDir,
+        parallel: options.parallel || 4,
+        continueOnError: options.continueOnError || false
+      });
     } catch (error) {
       handleError(error);
     }

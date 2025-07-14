@@ -11,6 +11,7 @@ import {
   PropertyAccessExpression,
   Identifier,
 } from 'ts-morph';
+import * as path from 'path';
 import {
   CallGraph,
   CallGraphNode,
@@ -64,6 +65,19 @@ export class CallGraphAnalyzer {
     // For now, keep direct Project creation for backward compatibility
     // TODO: Refactor to use async initialization
     this.project = new Project(projectOptions);
+    
+    // If no tsconfig is provided, add source files manually
+    if (!context.tsConfigPath) {
+      const sourcePatterns = context.sourcePatterns || ['src/**/*.ts', 'src/**/*.tsx'];
+      const excludePatterns = context.excludePatterns || ['node_modules/**', '**/*.test.ts', '**/*.spec.ts'];
+      
+      // Add source files using glob patterns
+      this.project.addSourceFilesAtPaths([
+        ...sourcePatterns.map(pattern => path.join(context.rootPath, pattern)),
+        ...excludePatterns.map(pattern => '!' + path.join(context.rootPath, pattern))
+      ]);
+    }
+    
     this.entryPointFinder = new EntryPointFinder(this.project);
 
     logger.debug(`Initialized CallGraphAnalyzer with context:`, context);

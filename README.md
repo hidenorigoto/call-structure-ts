@@ -34,6 +34,16 @@ npm install
 npm run build
 ```
 
+### Git Hooks
+
+This project uses Husky to enforce code quality through Git hooks:
+
+- **Pre-commit**: Runs linting, formatting, type checking, and tests
+- **Commit-msg**: Enforces conventional commit message format
+- **Pre-push**: Runs comprehensive verification before pushing
+
+See [docs/git-hooks.md](docs/git-hooks.md) for detailed information.
+
 ## Usage
 
 ```bash

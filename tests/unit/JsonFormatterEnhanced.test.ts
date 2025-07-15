@@ -15,18 +15,18 @@ describe('JsonFormatter Enhanced Features', () => {
   });
 
   describe('Streaming Support', () => {
-    it('should stream format basic call graph', (done) => {
+    it('should stream format basic call graph', done => {
       const chunks: string[] = [];
       const mockStream = new MockWritable();
-      
-      mockStream.on('data', (chunk) => {
+
+      mockStream.on('data', chunk => {
         chunks.push(chunk.toString());
       });
-      
+
       mockStream.on('finish', () => {
         const output = chunks.join('');
         const parsed = JSON.parse(output);
-        
+
         expect(parsed.metadata).toBeDefined();
         expect(parsed.nodes).toHaveLength(3);
         expect(parsed.edges).toHaveLength(2);
@@ -37,19 +37,19 @@ describe('JsonFormatter Enhanced Features', () => {
       formatter.formatStream(sampleCallGraph, mockStream);
     });
 
-    it('should stream format with custom chunk size', (done) => {
+    it('should stream format with custom chunk size', done => {
       const largeGraph = createLargeCallGraph(150); // 150 nodes
       const mockStream = new MockWritable();
       const chunks: string[] = [];
-      
-      mockStream.on('data', (chunk) => {
+
+      mockStream.on('data', chunk => {
         chunks.push(chunk.toString());
       });
-      
+
       mockStream.on('finish', () => {
         const output = chunks.join('');
         const parsed = JSON.parse(output);
-        
+
         expect(parsed.nodes).toHaveLength(150);
         expect(parsed.edges).toHaveLength(149); // Linear chain
         done();
@@ -58,19 +58,19 @@ describe('JsonFormatter Enhanced Features', () => {
       formatter.formatStream(largeGraph, mockStream, { chunkSize: 25 });
     });
 
-    it('should stream format without prettification', (done) => {
+    it('should stream format without prettification', done => {
       const mockStream = new MockWritable();
       const chunks: string[] = [];
-      
-      mockStream.on('data', (chunk) => {
+
+      mockStream.on('data', chunk => {
         chunks.push(chunk.toString());
       });
-      
+
       mockStream.on('finish', () => {
         const output = chunks.join('');
         expect(output).not.toContain('\n');
         expect(output).not.toContain('  '); // No indentation
-        
+
         const parsed = JSON.parse(output);
         expect(parsed.nodes).toHaveLength(3);
         done();
@@ -79,18 +79,18 @@ describe('JsonFormatter Enhanced Features', () => {
       formatter.formatStream(sampleCallGraph, mockStream, { prettify: false });
     });
 
-    it('should include metrics when streaming', (done) => {
+    it('should include metrics when streaming', done => {
       const mockStream = new MockWritable();
       const chunks: string[] = [];
-      
-      mockStream.on('data', (chunk) => {
+
+      mockStream.on('data', chunk => {
         chunks.push(chunk.toString());
       });
-      
+
       mockStream.on('finish', () => {
         const output = chunks.join('');
         const parsed = JSON.parse(output);
-        
+
         expect(parsed.statistics).toBeDefined();
         expect(parsed.statistics.overview).toBeDefined();
         expect(parsed.statistics.overview.totalNodes).toBe(3);
@@ -100,18 +100,16 @@ describe('JsonFormatter Enhanced Features', () => {
       formatter.formatStream(sampleCallGraph, mockStream, { includeMetrics: true });
     });
 
-    it('should handle stream errors gracefully', (done) => {
+    it('should handle stream errors gracefully', done => {
       const errorStream = new MockWritable();
-      let errorEmitted = false;
-      
-      errorStream.on('error', (error) => {
-        errorEmitted = true;
+
+      errorStream.on('error', error => {
         expect(error).toBeDefined();
         done();
       });
 
       // Simulate an error during streaming
-      errorStream.write = () => {
+      errorStream.write = (): boolean => {
         throw new Error('Stream write error');
       };
 
@@ -129,24 +127,24 @@ describe('JsonFormatter Enhanced Features', () => {
 
     it('should omit circular references when strategy is OMIT', () => {
       const options: FormatOptions = {
-        circularReferenceStrategy: CircularReferenceStrategy.OMIT
+        circularReferenceStrategy: CircularReferenceStrategy.OMIT,
       };
-      
+
       const result = formatter.format(circularCallGraph, options);
       const parsed = JSON.parse(result);
-      
+
       // Should have fewer edges after omitting circular ones
       expect(parsed.edges.length).toBeLessThan(circularCallGraph.edges.length);
     });
 
     it('should replace circular references when strategy is REFERENCE', () => {
       const options: FormatOptions = {
-        circularReferenceStrategy: CircularReferenceStrategy.REFERENCE
+        circularReferenceStrategy: CircularReferenceStrategy.REFERENCE,
       };
-      
+
       const result = formatter.format(circularCallGraph, options);
       const parsed = JSON.parse(result);
-      
+
       // Should mark some edges as circular
       const circularEdges = parsed.edges.filter((edge: any) => edge.circular);
       expect(circularEdges.length).toBeGreaterThan(0);
@@ -155,29 +153,29 @@ describe('JsonFormatter Enhanced Features', () => {
 
     it('should inline once when strategy is INLINE_ONCE', () => {
       const options: FormatOptions = {
-        circularReferenceStrategy: CircularReferenceStrategy.INLINE_ONCE
+        circularReferenceStrategy: CircularReferenceStrategy.INLINE_ONCE,
       };
-      
+
       const result = formatter.format(circularCallGraph, options);
       const parsed = JSON.parse(result);
-      
+
       // Should have metadata about circular references
       expect(parsed.metadata.circularReferences).toBeDefined();
       expect(parsed.metadata.circularReferences.length).toBeGreaterThan(0);
     });
 
-    it('should stream format with circular reference handling', (done) => {
+    it('should stream format with circular reference handling', done => {
       const mockStream = new MockWritable();
       const chunks: string[] = [];
-      
-      mockStream.on('data', (chunk) => {
+
+      mockStream.on('data', chunk => {
         chunks.push(chunk.toString());
       });
-      
+
       mockStream.on('finish', () => {
         const output = chunks.join('');
         const parsed = JSON.parse(output);
-        
+
         // Should have processed circular references
         const circularEdges = parsed.edges.filter((edge: any) => edge.circular);
         expect(circularEdges.length).toBeGreaterThan(0);
@@ -185,7 +183,7 @@ describe('JsonFormatter Enhanced Features', () => {
       });
 
       formatter.formatStream(circularCallGraph, mockStream, {
-        circularReferenceStrategy: CircularReferenceStrategy.REFERENCE
+        circularReferenceStrategy: CircularReferenceStrategy.REFERENCE,
       });
     });
   });
@@ -194,23 +192,23 @@ describe('JsonFormatter Enhanced Features', () => {
     it('should handle graphs with 1000+ nodes efficiently', () => {
       const largeGraph = createLargeCallGraph(1000);
       const startTime = Date.now();
-      
+
       const result = formatter.format(largeGraph);
       const endTime = Date.now();
-      
+
       const parsed = JSON.parse(result);
       expect(parsed.nodes).toHaveLength(1000);
       expect(parsed.edges).toHaveLength(999);
-      
+
       // Should complete within reasonable time (less than 2 seconds)
       expect(endTime - startTime).toBeLessThan(2000);
     });
 
-    it('should stream large graphs efficiently', (done) => {
+    it('should stream large graphs efficiently', done => {
       const largeGraph = createLargeCallGraph(5000);
       const mockStream = new MockWritable();
       const startTime = Date.now();
-      
+
       mockStream.on('finish', () => {
         const endTime = Date.now();
         // Should complete streaming within reasonable time
@@ -221,19 +219,19 @@ describe('JsonFormatter Enhanced Features', () => {
       formatter.formatStream(largeGraph, mockStream, { chunkSize: 50 });
     });
 
-    it('should handle graphs with 10,000+ nodes via streaming', (done) => {
+    it('should handle graphs with 10,000+ nodes via streaming', done => {
       const veryLargeGraph = createLargeCallGraph(10000);
       const mockStream = new MockWritable();
       const chunks: string[] = [];
-      
-      mockStream.on('data', (chunk) => {
+
+      mockStream.on('data', chunk => {
         chunks.push(chunk.toString());
       });
-      
+
       mockStream.on('finish', () => {
         const output = chunks.join('');
         const parsed = JSON.parse(output);
-        
+
         expect(parsed.nodes).toHaveLength(10000);
         expect(parsed.edges).toHaveLength(9999);
         done();
@@ -248,12 +246,12 @@ describe('JsonFormatter Enhanced Features', () => {
     it('should validate enhanced JSON output', () => {
       const options: FormatOptions = {
         includeMetrics: true,
-        circularReferenceStrategy: CircularReferenceStrategy.REFERENCE
+        circularReferenceStrategy: CircularReferenceStrategy.REFERENCE,
       };
-      
+
       const result = formatter.format(circularCallGraph, options);
       const validation = formatter.validate(result);
-      
+
       expect(validation.isValid).toBe(true);
       expect(validation.error).toBeUndefined();
     });
@@ -261,7 +259,7 @@ describe('JsonFormatter Enhanced Features', () => {
     it('should provide detailed validation errors', () => {
       const invalidJson = '{ "nodes": "not an array", "edges": [] }';
       const validation = formatter.validate(invalidJson);
-      
+
       expect(validation.isValid).toBe(false);
       expect(validation.error).toContain('invalid nodes array');
     });
@@ -282,12 +280,12 @@ describe('JsonFormatter Enhanced Features', () => {
         maxDepth: 5,
         filterExternal: true,
         circularReferenceStrategy: CircularReferenceStrategy.OMIT,
-        chunkSize: 50
+        chunkSize: 50,
       };
-      
+
       const result = formatter.format(sampleCallGraph, options);
       expect(result).toBeDefined();
-      
+
       const parsed = JSON.parse(result);
       expect(parsed.metadata).toBeDefined();
       expect(parsed.statistics).toBeDefined();
@@ -298,12 +296,12 @@ describe('JsonFormatter Enhanced Features', () => {
 // Helper classes and functions
 
 class MockWritable extends Writable {
-  override _write(chunk: any, encoding: string, callback: Function) {
+  override _write(chunk: any, encoding: string, callback: (error?: Error | null) => void): void {
     this.emit('data', chunk);
     callback();
   }
 
-  override _final(callback: Function) {
+  override _final(callback: (error?: Error | null) => void): void {
     this.emit('finish');
     callback();
   }
@@ -317,7 +315,7 @@ function createSampleCallGraph(): CallGraph {
       maxDepth: 10,
       projectRoot: '/test',
       totalFiles: 1,
-      analysisTimeMs: 100
+      analysisTimeMs: 100,
     },
     nodes: [
       {
@@ -329,7 +327,7 @@ function createSampleCallGraph(): CallGraph {
         type: 'function',
         async: false,
         parameters: [],
-        returnType: 'void'
+        returnType: 'void',
       },
       {
         id: 'test#helper',
@@ -340,7 +338,7 @@ function createSampleCallGraph(): CallGraph {
         type: 'function',
         async: false,
         parameters: [],
-        returnType: 'string'
+        returnType: 'string',
       },
       {
         id: 'test#asyncHelper',
@@ -351,8 +349,8 @@ function createSampleCallGraph(): CallGraph {
         type: 'function',
         async: true,
         parameters: [],
-        returnType: 'Promise<string>'
-      }
+        returnType: 'Promise<string>',
+      },
     ],
     edges: [
       {
@@ -361,7 +359,7 @@ function createSampleCallGraph(): CallGraph {
         target: 'test#helper',
         type: 'sync',
         line: 2,
-        column: 2
+        column: 2,
       },
       {
         id: 'edge2',
@@ -369,10 +367,10 @@ function createSampleCallGraph(): CallGraph {
         target: 'test#asyncHelper',
         type: 'async',
         line: 3,
-        column: 2
-      }
+        column: 2,
+      },
     ],
-    entryPointId: 'test#main'
+    entryPointId: 'test#main',
   };
 }
 
@@ -384,7 +382,7 @@ function createCircularCallGraph(): CallGraph {
       maxDepth: 10,
       projectRoot: '/test',
       totalFiles: 1,
-      analysisTimeMs: 100
+      analysisTimeMs: 100,
     },
     nodes: [
       {
@@ -395,7 +393,7 @@ function createCircularCallGraph(): CallGraph {
         type: 'function',
         async: false,
         parameters: [],
-        returnType: 'void'
+        returnType: 'void',
       },
       {
         id: 'circular#funcB',
@@ -405,7 +403,7 @@ function createCircularCallGraph(): CallGraph {
         type: 'function',
         async: false,
         parameters: [],
-        returnType: 'void'
+        returnType: 'void',
       },
       {
         id: 'circular#funcC',
@@ -415,8 +413,8 @@ function createCircularCallGraph(): CallGraph {
         type: 'function',
         async: false,
         parameters: [],
-        returnType: 'void'
-      }
+        returnType: 'void',
+      },
     ],
     edges: [
       {
@@ -424,24 +422,24 @@ function createCircularCallGraph(): CallGraph {
         source: 'circular#funcA',
         target: 'circular#funcB',
         type: 'sync',
-        line: 2
+        line: 2,
       },
       {
         id: 'edge2',
         source: 'circular#funcB',
         target: 'circular#funcC',
         type: 'sync',
-        line: 6
+        line: 6,
       },
       {
         id: 'edge3',
         source: 'circular#funcC',
         target: 'circular#funcA', // Creates a cycle
         type: 'sync',
-        line: 10
-      }
+        line: 10,
+      },
     ],
-    entryPointId: 'circular#funcA'
+    entryPointId: 'circular#funcA',
   };
 }
 
@@ -459,7 +457,7 @@ function createLargeCallGraph(nodeCount: number): CallGraph {
       type: 'function',
       async: i % 10 === 0, // Every 10th function is async
       parameters: [],
-      returnType: i % 2 === 0 ? 'void' : 'string'
+      returnType: i % 2 === 0 ? 'void' : 'string',
     });
   }
 
@@ -470,7 +468,7 @@ function createLargeCallGraph(nodeCount: number): CallGraph {
       source: `large#func${i}`,
       target: `large#func${i + 1}`,
       type: i % 10 === 0 ? 'async' : 'sync',
-      line: (i % 100) + 1
+      line: (i % 100) + 1,
     });
   }
 
@@ -481,10 +479,10 @@ function createLargeCallGraph(nodeCount: number): CallGraph {
       maxDepth: nodeCount,
       projectRoot: '/test',
       totalFiles: Math.ceil(nodeCount / 100),
-      analysisTimeMs: 1000
+      analysisTimeMs: 1000,
     },
     nodes,
     edges,
-    entryPointId: 'large#func0'
+    entryPointId: 'large#func0',
   };
 }

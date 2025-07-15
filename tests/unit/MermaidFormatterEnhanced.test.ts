@@ -29,9 +29,9 @@ describe('MermaidFormatter Enhanced Features', () => {
         maxDepth: 5,
         filterExternal: true,
         circularReferenceStrategy: CircularReferenceStrategy.OMIT,
-        chunkSize: 50
+        chunkSize: 50,
       };
-      
+
       const result = formatter.format(sampleCallGraph, options);
       expect(result).toBeDefined();
       expect(result).toContain('flowchart');
@@ -41,27 +41,27 @@ describe('MermaidFormatter Enhanced Features', () => {
   describe('MermaidFormatOptions', () => {
     it('should respect direction option', () => {
       const options: MermaidFormatOptions = {
-        direction: 'LR'
+        direction: 'LR',
       };
-      
+
       const result = formatter.format(sampleCallGraph, options);
       expect(result).toContain('flowchart LR');
     });
 
     it('should apply theme when specified', () => {
       const options: MermaidFormatOptions = {
-        theme: 'dark'
+        theme: 'dark',
       };
-      
+
       const result = formatter.format(sampleCallGraph, options);
       expect(result).toContain("%%{init: {'theme':'dark'}}%%");
     });
 
     it('should cluster by module when enabled', () => {
       const options: MermaidFormatOptions = {
-        clusterByModule: true
+        clusterByModule: true,
       };
-      
+
       const result = formatter.format(sampleCallGraph, options);
       expect(result).toContain('subgraph');
       expect(result).toContain('📁');
@@ -71,32 +71,32 @@ describe('MermaidFormatter Enhanced Features', () => {
     it('should limit nodes when maxNodes is set', () => {
       const largeGraph = createLargeCallGraph(20);
       const options: MermaidFormatOptions = {
-        maxNodes: 10
+        maxNodes: 10,
       };
-      
+
       const result = formatter.format(largeGraph, options);
-      
+
       // Count node definitions (lines with shapes like (), [], etc.)
-      const nodeMatches = result.match(/\w+[(\[{>]/g) || [];
+      const nodeMatches = result.match(/\w+[([\]{>]/g) || [];
       expect(nodeMatches.length).toBeLessThanOrEqual(10);
     });
 
     it('should hide edge labels when showEdgeLabels is false', () => {
       const options: MermaidFormatOptions = {
-        showEdgeLabels: false
+        showEdgeLabels: false,
       };
-      
+
       const result = formatter.format(sampleCallGraph, options);
-      
+
       // Should not contain edge labels like |"await"| or |"2x"|
       expect(result).not.toContain('|"');
     });
 
     it('should generate sequence diagram when diagramType is sequence', () => {
       const options: MermaidFormatOptions = {
-        diagramType: 'sequence'
+        diagramType: 'sequence',
       };
-      
+
       const result = formatter.format(sampleCallGraph, options);
       expect(result).toContain('sequenceDiagram');
       expect(result).toContain('participant');
@@ -105,14 +105,14 @@ describe('MermaidFormatter Enhanced Features', () => {
   });
 
   describe('Streaming Support', () => {
-    it('should stream format basic call graph', (done) => {
+    it('should stream format basic call graph', done => {
       const chunks: string[] = [];
       const mockStream = new MockWritable();
-      
-      mockStream.on('data', (chunk) => {
+
+      mockStream.on('data', chunk => {
         chunks.push(chunk.toString());
       });
-      
+
       mockStream.on('finish', () => {
         const output = chunks.join('');
         expect(output).toContain('flowchart TD');
@@ -125,19 +125,19 @@ describe('MermaidFormatter Enhanced Features', () => {
       formatter.formatStream(sampleCallGraph, mockStream);
     });
 
-    it('should stream with custom chunk size', (done) => {
+    it('should stream with custom chunk size', done => {
       const largeGraph = createLargeCallGraph(150);
       const mockStream = new MockWritable();
       const chunks: string[] = [];
-      
-      mockStream.on('data', (chunk) => {
+
+      mockStream.on('data', chunk => {
         chunks.push(chunk.toString());
       });
-      
+
       mockStream.on('finish', () => {
         const output = chunks.join('');
         expect(output).toContain('flowchart TD');
-        
+
         // Should have all nodes
         for (let i = 0; i < 150; i++) {
           expect(output).toContain(`func${i}`);
@@ -148,14 +148,14 @@ describe('MermaidFormatter Enhanced Features', () => {
       formatter.formatStream(largeGraph, mockStream, { chunkSize: 25 });
     });
 
-    it('should stream flowchart with theme', (done) => {
+    it('should stream flowchart with theme', done => {
       const mockStream = new MockWritable();
       const chunks: string[] = [];
-      
-      mockStream.on('data', (chunk) => {
+
+      mockStream.on('data', chunk => {
         chunks.push(chunk.toString());
       });
-      
+
       mockStream.on('finish', () => {
         const output = chunks.join('');
         expect(output).toContain("%%{init: {'theme':'forest'}}%%");
@@ -165,19 +165,19 @@ describe('MermaidFormatter Enhanced Features', () => {
 
       const options: MermaidFormatOptions = {
         theme: 'forest',
-        direction: 'LR'
+        direction: 'LR',
       };
       formatter.formatStream(sampleCallGraph, mockStream, options);
     });
 
-    it('should stream subgraph diagram', (done) => {
+    it('should stream subgraph diagram', done => {
       const mockStream = new MockWritable();
       const chunks: string[] = [];
-      
-      mockStream.on('data', (chunk) => {
+
+      mockStream.on('data', chunk => {
         chunks.push(chunk.toString());
       });
-      
+
       mockStream.on('finish', () => {
         const output = chunks.join('');
         expect(output).toContain('subgraph');
@@ -189,14 +189,14 @@ describe('MermaidFormatter Enhanced Features', () => {
       formatter.formatStream(sampleCallGraph, mockStream, options);
     });
 
-    it('should stream sequence diagram', (done) => {
+    it('should stream sequence diagram', done => {
       const mockStream = new MockWritable();
       const chunks: string[] = [];
-      
-      mockStream.on('data', (chunk) => {
+
+      mockStream.on('data', chunk => {
         chunks.push(chunk.toString());
       });
-      
+
       mockStream.on('finish', () => {
         const output = chunks.join('');
         expect(output).toContain('sequenceDiagram');
@@ -208,18 +208,16 @@ describe('MermaidFormatter Enhanced Features', () => {
       formatter.formatStream(sampleCallGraph, mockStream, options);
     });
 
-    it('should handle stream errors gracefully', (done) => {
+    it('should handle stream errors gracefully', done => {
       const errorStream = new MockWritable();
-      let errorEmitted = false;
-      
-      errorStream.on('error', (error) => {
-        errorEmitted = true;
+
+      errorStream.on('error', error => {
         expect(error).toBeDefined();
         done();
       });
 
       // Simulate an error during streaming
-      errorStream.write = () => {
+      errorStream.write = (): boolean => {
         throw new Error('Stream write error');
       };
 
@@ -236,11 +234,11 @@ describe('MermaidFormatter Enhanced Features', () => {
 
     it('should omit circular references when strategy is OMIT', () => {
       const options: FormatOptions = {
-        circularReferenceStrategy: CircularReferenceStrategy.OMIT
+        circularReferenceStrategy: CircularReferenceStrategy.OMIT,
       };
-      
+
       const result = formatter.format(circularCallGraph, options);
-      
+
       // Should have fewer edges - the circular one should be omitted
       const edgeCount = (result.match(/-->/g) || []).length;
       expect(edgeCount).toBeLessThan(circularCallGraph.edges.length);
@@ -248,11 +246,11 @@ describe('MermaidFormatter Enhanced Features', () => {
 
     it('should mark circular references when strategy is REFERENCE', () => {
       const options: FormatOptions = {
-        circularReferenceStrategy: CircularReferenceStrategy.REFERENCE
+        circularReferenceStrategy: CircularReferenceStrategy.REFERENCE,
       };
-      
+
       const result = formatter.format(circularCallGraph, options);
-      
+
       // Should have all edges
       const edgeCount = (result.match(/-->/g) || []).length;
       expect(edgeCount).toBe(circularCallGraph.edges.length);
@@ -260,28 +258,28 @@ describe('MermaidFormatter Enhanced Features', () => {
 
     it('should handle INLINE_ONCE strategy', () => {
       const options: FormatOptions = {
-        circularReferenceStrategy: CircularReferenceStrategy.INLINE_ONCE
+        circularReferenceStrategy: CircularReferenceStrategy.INLINE_ONCE,
       };
-      
+
       const result = formatter.format(circularCallGraph, options);
-      
+
       // For Mermaid, INLINE_ONCE just returns the graph as-is
       // since Mermaid handles cycles naturally
       const edgeCount = (result.match(/-->/g) || []).length;
       expect(edgeCount).toBe(circularCallGraph.edges.length);
     });
 
-    it('should stream format with circular reference handling', (done) => {
+    it('should stream format with circular reference handling', done => {
       const mockStream = new MockWritable();
       const chunks: string[] = [];
-      
-      mockStream.on('data', (chunk) => {
+
+      mockStream.on('data', chunk => {
         chunks.push(chunk.toString());
       });
-      
+
       mockStream.on('finish', () => {
         const output = chunks.join('');
-        
+
         // With OMIT strategy, should have fewer edges
         const edgeCount = (output.match(/-->/g) || []).length;
         expect(edgeCount).toBeLessThan(circularCallGraph.edges.length);
@@ -289,7 +287,7 @@ describe('MermaidFormatter Enhanced Features', () => {
       });
 
       formatter.formatStream(circularCallGraph, mockStream, {
-        circularReferenceStrategy: CircularReferenceStrategy.OMIT
+        circularReferenceStrategy: CircularReferenceStrategy.OMIT,
       });
     });
   });
@@ -298,14 +296,14 @@ describe('MermaidFormatter Enhanced Features', () => {
     it('should prioritize connected nodes when limiting', () => {
       const graph = createComplexGraph();
       const options: MermaidFormatOptions = {
-        maxNodes: 5
+        maxNodes: 5,
       };
-      
+
       const result = formatter.format(graph, options);
-      
+
       // Should always include entry point
       expect(result).toContain('hub');
-      
+
       // Should include highly connected nodes
       expect(result).toContain('connector1');
       expect(result).toContain('connector2');
@@ -314,15 +312,15 @@ describe('MermaidFormatter Enhanced Features', () => {
     it('should maintain edge consistency when limiting nodes', () => {
       const graph = createLargeCallGraph(20);
       const options: MermaidFormatOptions = {
-        maxNodes: 10
+        maxNodes: 10,
       };
-      
+
       const result = formatter.format(graph, options);
-      
+
       // Extract node IDs from the result
-      const nodeMatches = result.match(/(\w+)[(\[{>]/g) || [];
+      const nodeMatches = result.match(/(\w+)[([\]{>]/g) || [];
       const nodeIds = new Set(nodeMatches.map(m => m.slice(0, -1)));
-      
+
       // All edges should connect existing nodes
       const edgeMatches = result.match(/(\w+)\s*-->\s*(\w+)/g) || [];
       edgeMatches.forEach(edge => {
@@ -338,7 +336,7 @@ describe('MermaidFormatter Enhanced Features', () => {
     it('should validate correct Mermaid output', () => {
       const result = formatter.format(sampleCallGraph);
       const validation = formatter.validate(result);
-      
+
       expect(validation.isValid).toBe(true);
       expect(validation.error).toBeUndefined();
     });
@@ -346,20 +344,20 @@ describe('MermaidFormatter Enhanced Features', () => {
     it('should validate sequence diagrams', () => {
       const result = formatter.formatAsSequenceDiagram(sampleCallGraph);
       const validation = formatter.validate(result);
-      
+
       expect(validation.isValid).toBe(true);
     });
 
     it('should validate subgraph diagrams', () => {
       const result = formatter.formatWithSubgraphs(sampleCallGraph);
       const validation = formatter.validate(result);
-      
+
       expect(validation.isValid).toBe(true);
     });
 
     it('should detect invalid diagram type', () => {
       const validation = formatter.validate('invalid diagram');
-      
+
       expect(validation.isValid).toBe(false);
       expect(validation.error).toContain('Invalid diagram type');
     });
@@ -369,9 +367,9 @@ describe('MermaidFormatter Enhanced Features', () => {
     A[Node A]
     B Node B]
     A --> B`;
-      
+
       const validation = formatter.validate(invalidMermaid);
-      
+
       expect(validation.isValid).toBe(false);
       expect(validation.error).toContain('Invalid syntax');
     });
@@ -381,21 +379,21 @@ describe('MermaidFormatter Enhanced Features', () => {
     it('should handle graphs with 1000+ nodes efficiently', () => {
       const largeGraph = createLargeCallGraph(1000);
       const startTime = Date.now();
-      
+
       const result = formatter.format(largeGraph);
       const endTime = Date.now();
-      
+
       expect(result).toContain('flowchart');
-      
+
       // Should complete within reasonable time (less than 2 seconds)
       expect(endTime - startTime).toBeLessThan(2000);
     });
 
-    it('should stream large graphs efficiently', (done) => {
+    it('should stream large graphs efficiently', done => {
       const largeGraph = createLargeCallGraph(5000);
       const mockStream = new MockWritable();
       const startTime = Date.now();
-      
+
       mockStream.on('finish', () => {
         const endTime = Date.now();
         // Should complete streaming within reasonable time
@@ -420,7 +418,7 @@ describe('MermaidFormatter Enhanced Features', () => {
             type: 'function',
             async: false,
             parameters: [],
-            returnType: 'void'
+            returnType: 'void',
           },
           {
             id: 'test#func_with_underscore',
@@ -430,7 +428,7 @@ describe('MermaidFormatter Enhanced Features', () => {
             type: 'function',
             async: false,
             parameters: [],
-            returnType: 'void'
+            returnType: 'void',
           },
           {
             id: 'test#func.with.dots',
@@ -440,15 +438,15 @@ describe('MermaidFormatter Enhanced Features', () => {
             type: 'function',
             async: false,
             parameters: [],
-            returnType: 'void'
-          }
+            returnType: 'void',
+          },
         ],
-        edges: []
+        edges: [],
       };
-      
+
       const result = formatter.format(specialGraph);
       const validation = formatter.validate(result);
-      
+
       expect(validation.isValid).toBe(true);
       expect(result).toContain('func_with_dash');
       expect(result).toContain('func_with_underscore');
@@ -458,12 +456,14 @@ describe('MermaidFormatter Enhanced Features', () => {
     it('should handle empty node names', () => {
       const emptyNameGraph: CallGraph = {
         ...sampleCallGraph,
-        nodes: [{
-          ...sampleCallGraph.nodes[0],
-          name: ''
-        }]
+        nodes: [
+          {
+            ...sampleCallGraph.nodes[0],
+            name: '',
+          },
+        ],
       };
-      
+
       const result = formatter.format(emptyNameGraph);
       expect(result).toContain('node_0'); // Should use fallback name
     });
@@ -471,12 +471,14 @@ describe('MermaidFormatter Enhanced Features', () => {
     it('should handle nodes with numeric names', () => {
       const numericGraph: CallGraph = {
         ...sampleCallGraph,
-        nodes: [{
-          ...sampleCallGraph.nodes[0],
-          name: '123function'
-        }]
+        nodes: [
+          {
+            ...sampleCallGraph.nodes[0],
+            name: '123function',
+          },
+        ],
       };
-      
+
       const result = formatter.format(numericGraph);
       expect(result).toContain('n_123function'); // Should prefix with letter
     });
@@ -486,12 +488,12 @@ describe('MermaidFormatter Enhanced Features', () => {
 // Helper classes and functions
 
 class MockWritable extends Writable {
-  override _write(chunk: any, encoding: string, callback: Function) {
+  override _write(chunk: any, encoding: string, callback: (error?: Error | null) => void): void {
     this.emit('data', chunk);
     callback();
   }
 
-  override _final(callback: Function) {
+  override _final(callback: (error?: Error | null) => void): void {
     this.emit('finish');
     callback();
   }
@@ -505,7 +507,7 @@ function createSampleCallGraph(): CallGraph {
       maxDepth: 10,
       projectRoot: '/test',
       totalFiles: 1,
-      analysisTimeMs: 100
+      analysisTimeMs: 100,
     },
     nodes: [
       {
@@ -517,7 +519,7 @@ function createSampleCallGraph(): CallGraph {
         type: 'function',
         async: false,
         parameters: [],
-        returnType: 'void'
+        returnType: 'void',
       },
       {
         id: 'test#helper',
@@ -528,7 +530,7 @@ function createSampleCallGraph(): CallGraph {
         type: 'function',
         async: false,
         parameters: [],
-        returnType: 'string'
+        returnType: 'string',
       },
       {
         id: 'test#asyncHelper',
@@ -539,8 +541,8 @@ function createSampleCallGraph(): CallGraph {
         type: 'function',
         async: true,
         parameters: [],
-        returnType: 'Promise<string>'
-      }
+        returnType: 'Promise<string>',
+      },
     ],
     edges: [
       {
@@ -549,7 +551,7 @@ function createSampleCallGraph(): CallGraph {
         target: 'test#helper',
         type: 'sync',
         line: 2,
-        column: 2
+        column: 2,
       },
       {
         id: 'edge2',
@@ -557,10 +559,10 @@ function createSampleCallGraph(): CallGraph {
         target: 'test#asyncHelper',
         type: 'async',
         line: 3,
-        column: 2
-      }
+        column: 2,
+      },
     ],
-    entryPointId: 'test#main'
+    entryPointId: 'test#main',
   };
 }
 
@@ -572,7 +574,7 @@ function createCircularCallGraph(): CallGraph {
       maxDepth: 10,
       projectRoot: '/test',
       totalFiles: 1,
-      analysisTimeMs: 100
+      analysisTimeMs: 100,
     },
     nodes: [
       {
@@ -583,7 +585,7 @@ function createCircularCallGraph(): CallGraph {
         type: 'function',
         async: false,
         parameters: [],
-        returnType: 'void'
+        returnType: 'void',
       },
       {
         id: 'circular#funcB',
@@ -593,7 +595,7 @@ function createCircularCallGraph(): CallGraph {
         type: 'function',
         async: false,
         parameters: [],
-        returnType: 'void'
+        returnType: 'void',
       },
       {
         id: 'circular#funcC',
@@ -603,8 +605,8 @@ function createCircularCallGraph(): CallGraph {
         type: 'function',
         async: false,
         parameters: [],
-        returnType: 'void'
-      }
+        returnType: 'void',
+      },
     ],
     edges: [
       {
@@ -612,24 +614,24 @@ function createCircularCallGraph(): CallGraph {
         source: 'circular#funcA',
         target: 'circular#funcB',
         type: 'sync',
-        line: 2
+        line: 2,
       },
       {
         id: 'edge2',
         source: 'circular#funcB',
         target: 'circular#funcC',
         type: 'sync',
-        line: 6
+        line: 6,
       },
       {
         id: 'edge3',
         source: 'circular#funcC',
         target: 'circular#funcA', // Creates a cycle
         type: 'sync',
-        line: 10
-      }
+        line: 10,
+      },
     ],
-    entryPointId: 'circular#funcA'
+    entryPointId: 'circular#funcA',
   };
 }
 
@@ -647,7 +649,7 @@ function createLargeCallGraph(nodeCount: number): CallGraph {
       type: 'function',
       async: i % 10 === 0, // Every 10th function is async
       parameters: [],
-      returnType: i % 2 === 0 ? 'void' : 'string'
+      returnType: i % 2 === 0 ? 'void' : 'string',
     });
   }
 
@@ -658,7 +660,7 @@ function createLargeCallGraph(nodeCount: number): CallGraph {
       source: `large#func${i}`,
       target: `large#func${i + 1}`,
       type: i % 10 === 0 ? 'async' : 'sync',
-      line: (i % 100) + 1
+      line: (i % 100) + 1,
     });
   }
 
@@ -669,11 +671,11 @@ function createLargeCallGraph(nodeCount: number): CallGraph {
       maxDepth: nodeCount,
       projectRoot: '/test',
       totalFiles: Math.ceil(nodeCount / 100),
-      analysisTimeMs: 1000
+      analysisTimeMs: 1000,
     },
     nodes,
     edges,
-    entryPointId: 'large#func0'
+    entryPointId: 'large#func0',
   };
 }
 
@@ -685,7 +687,7 @@ function createComplexGraph(): CallGraph {
       maxDepth: 10,
       projectRoot: '/test',
       totalFiles: 3,
-      analysisTimeMs: 200
+      analysisTimeMs: 200,
     },
     nodes: [
       // Hub node - highly connected
@@ -697,7 +699,7 @@ function createComplexGraph(): CallGraph {
         type: 'function',
         async: false,
         parameters: [],
-        returnType: 'void'
+        returnType: 'void',
       },
       // Connector nodes - medium connectivity
       {
@@ -708,7 +710,7 @@ function createComplexGraph(): CallGraph {
         type: 'function',
         async: false,
         parameters: [],
-        returnType: 'void'
+        returnType: 'void',
       },
       {
         id: 'complex#connector2',
@@ -718,7 +720,7 @@ function createComplexGraph(): CallGraph {
         type: 'function',
         async: false,
         parameters: [],
-        returnType: 'void'
+        returnType: 'void',
       },
       // Leaf nodes - low connectivity
       ...Array.from({ length: 10 }, (_, i) => ({
@@ -729,8 +731,8 @@ function createComplexGraph(): CallGraph {
         type: 'function' as const,
         async: false,
         parameters: [],
-        returnType: 'void'
-      }))
+        returnType: 'void',
+      })),
     ],
     edges: [
       // Hub connects to connectors
@@ -739,14 +741,14 @@ function createComplexGraph(): CallGraph {
         source: 'complex#hub',
         target: 'complex#connector1',
         type: 'sync',
-        line: 5
+        line: 5,
       },
       {
         id: 'hub-c2',
         source: 'complex#hub',
         target: 'complex#connector2',
         type: 'sync',
-        line: 6
+        line: 6,
       },
       // Connectors connect to leaves
       ...Array.from({ length: 5 }, (_, i) => ({
@@ -754,16 +756,16 @@ function createComplexGraph(): CallGraph {
         source: 'complex#connector1',
         target: `complex#leaf${i}`,
         type: 'sync' as const,
-        line: i + 2
+        line: i + 2,
       })),
       ...Array.from({ length: 5 }, (_, i) => ({
         id: `c2-l${i + 5}`,
         source: 'complex#connector2',
         target: `complex#leaf${i + 5}`,
         type: 'sync' as const,
-        line: i + 12
-      }))
+        line: i + 12,
+      })),
     ],
-    entryPointId: 'complex#hub'
+    entryPointId: 'complex#hub',
   };
 }

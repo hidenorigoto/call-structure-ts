@@ -1,4 +1,3 @@
-import { CallGraphAnalyzer } from '../../analyzer/CallGraphAnalyzer';
 import { EntryPointAnalyzer } from '../../analyzer/EntryPointAnalyzer';
 import { JsonFormatter } from '../../formatter/JsonFormatter';
 import { YamlFormatter } from '../../formatter/YamlFormatter';
@@ -9,6 +8,7 @@ import {
   ProjectContext,
   CallGraphError,
 } from '../../types/CallGraph';
+import { PerformanceOptimizer } from '../../performance/PerformanceOptimizer';
 import { logger } from '../../utils/logger';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -37,25 +37,38 @@ export interface AnalyzeOptions {
 
 export async function analyzeCommand(options: AnalyzeOptions): Promise<void> {
   const startTime = Date.now();
-  
+
   try {
     // Validate entry point format
     validateEntryPointFormat(options.entry);
-    
+
     logger.progress(`Starting analysis of entry point: ${options.entry}`);
 
     // Create project context
     const context = createProjectContext(options);
 
     // Create analysis options
-    const analysisOptions = createAnalysisOptions(options);
+    createAnalysisOptions(options);
 
     // Validate entry point exists before analysis
     await validateEntryPoint(options.entry, context);
 
-    // Perform analysis
-    const analyzer = new CallGraphAnalyzer(context, analysisOptions);
-    const callGraph = await analyzer.analyzeFromEntryPoint(options.entry);
+    // Perform analysis with performance optimizations
+    const optimizer = new PerformanceOptimizer(
+      context.tsConfigPath || path.join(context.rootPath, 'tsconfig.json'),
+      {
+        enableCache: options.cache !== 'false',
+        cacheDir: options.cache === 'false' ? undefined : options.cache,
+        enableParallel: options.parallel !== undefined && options.parallel > 0,
+        concurrency: options.parallel,
+        enableProgress: options.progress !== false,
+        silent: options.quiet,
+        maxDepth: parseInt(options.maxDepth, 10),
+        includeExternal: !options.filterExternal,
+      }
+    );
+
+    const callGraph = await optimizer.analyze(options.entry);
 
     // Format output
     const output = formatOutput(callGraph, options.format, {
@@ -72,7 +85,9 @@ export async function analyzeCommand(options: AnalyzeOptions): Promise<void> {
     } else {
       console.log(output);
       const elapsed = Date.now() - startTime;
-      logger.success(`Analysis completed in ${elapsed}ms. Found ${callGraph.nodes.length} nodes and ${callGraph.edges.length} edges.`);
+      logger.success(
+        `Analysis completed in ${elapsed}ms. Found ${callGraph.nodes.length} nodes and ${callGraph.edges.length} edges.`
+      );
     }
   } catch (error) {
     const elapsed = Date.now() - startTime;
@@ -90,7 +105,7 @@ function validateEntryPointFormat(entry: string): void {
   }
 
   const [filePath, functionPart] = entry.split('#');
-  
+
   if (!filePath || !functionPart) {
     throw new CallGraphError(
       `Invalid entry point format: ${entry}. Expected "file#function" or "file#Class.method"`,
@@ -99,7 +114,12 @@ function validateEntryPointFormat(entry: string): void {
   }
 
   // Validate file extension
-  if (!filePath.endsWith('.ts') && !filePath.endsWith('.tsx') && !filePath.endsWith('.js') && !filePath.endsWith('.jsx')) {
+  if (
+    !filePath.endsWith('.ts') &&
+    !filePath.endsWith('.tsx') &&
+    !filePath.endsWith('.js') &&
+    !filePath.endsWith('.jsx')
+  ) {
     throw new CallGraphError(
       `Unsupported file type: ${filePath}. Supported types: .ts, .tsx, .js, .jsx`,
       'UNSUPPORTED_FILE_TYPE'
@@ -109,7 +129,7 @@ function validateEntryPointFormat(entry: string): void {
 
 async function validateEntryPoint(entry: string, context: ProjectContext): Promise<void> {
   const [filePath] = entry.split('#');
-  
+
   // Check if file exists
   const fullPath = path.resolve(context.rootPath, filePath);
   if (!fs.existsSync(fullPath)) {
@@ -123,7 +143,7 @@ async function validateEntryPoint(entry: string, context: ProjectContext): Promi
   // Validate entry point exists in file using EntryPointAnalyzer
   const analyzer = new EntryPointAnalyzer(context);
   const validation = await analyzer.validateEntryPoint(entry);
-  
+
   if (!validation.isValid) {
     const [, functionName] = entry.split('#');
     throw new CallGraphError(
@@ -175,12 +195,8 @@ function createAnalysisOptions(options: AnalyzeOptions): CallGraphAnalysisOption
   // Add support for filtering external calls
   if (options.filterExternal) {
     // Add common external library patterns to exclude
-    const externalPatterns = [
-      /node_modules/,
-      /@types\//,
-      /\.d\.ts$/,
-    ];
-    
+    const externalPatterns = [/node_modules/, /@types\//, /\.d\.ts$/];
+
     if (analysisOptions.excludePatterns) {
       analysisOptions.excludePatterns.push(...externalPatterns);
     } else {

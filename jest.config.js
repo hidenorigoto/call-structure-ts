@@ -15,7 +15,7 @@ module.exports = {
     '^.+\\.ts$': 'ts-jest'
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(inquirer|ora|inquirer-autocomplete-prompt)/)'
+    'node_modules/(?!(inquirer|ora|inquirer-autocomplete-prompt|p-queue|eventemitter3)/)'
   ],
   collectCoverageFrom: [
     'src/**/*.ts',

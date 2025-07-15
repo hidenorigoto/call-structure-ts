@@ -185,11 +185,27 @@ function createAnalysisOptions(options: AnalyzeOptions): CallGraphAnalysisOption
   };
 
   if (options.exclude) {
-    analysisOptions.excludePatterns = options.exclude.map((pattern: string) => new RegExp(pattern));
+    analysisOptions.excludePatterns = options.exclude.map((pattern: string) => {
+      // Convert glob pattern to regex
+      const regexPattern = pattern
+        .replace(/\*\*/g, '.*') // ** becomes .*
+        .replace(/\*/g, '[^/]*') // * becomes [^/]*
+        .replace(/\?/g, '.') // ? becomes .
+        .replace(/\./g, '\\.'); // . becomes \.
+      return new RegExp(regexPattern);
+    });
   }
 
   if (options.include) {
-    analysisOptions.includePatterns = options.include.map((pattern: string) => new RegExp(pattern));
+    analysisOptions.includePatterns = options.include.map((pattern: string) => {
+      // Convert glob pattern to regex
+      const regexPattern = pattern
+        .replace(/\*\*/g, '.*') // ** becomes .*
+        .replace(/\*/g, '[^/]*') // * becomes [^/]*
+        .replace(/\?/g, '.') // ? becomes .
+        .replace(/\./g, '\\.'); // . becomes \.
+      return new RegExp(regexPattern);
+    });
   }
 
   // Add support for filtering external calls

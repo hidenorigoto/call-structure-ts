@@ -1,5 +1,6 @@
 import { Worker } from 'worker_threads';
 import * as path from 'path';
+import * as fs from 'fs';
 import * as fastq from 'fastq';
 import { EventEmitter } from 'events';
 import { AnalysisResult } from '../types/AnalysisResult';
@@ -44,7 +45,21 @@ export class ParallelAnalyzer extends EventEmitter {
     this.tsConfigPath = options.tsConfigPath;
     this.cacheManager = options.cacheManager;
     this.progressReporter = options.progressReporter || ProgressReporter.forFileAnalysis();
-    this.workerPath = path.join(__dirname, 'worker.js');
+    // In production, __dirname will be the dist/performance directory
+    // In development, we need to find the compiled worker.js file
+    let workerPath = path.join(__dirname, 'worker.js');
+
+    // If the worker file doesn't exist, try to find it
+    if (!fs.existsSync(workerPath)) {
+      // Check if we're in development mode (src directory)
+      if (__dirname.includes('src')) {
+        // Look for compiled worker in dist directory
+        const distPath = __dirname.replace('src', 'dist');
+        workerPath = path.join(distPath, 'worker.js');
+      }
+    }
+
+    this.workerPath = workerPath;
     this.initializeWorkers(options.concurrency || 4);
 
     // Create queue with worker function

@@ -1,0 +1,121 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Release to NPM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run full test suite
+        run: npm run test:ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run type-check
+
+      - name: Build project
+        run: npm run build
+
+      - name: Test package installation
+        run: |
+          # Create a temporary directory for testing
+          mkdir -p /tmp/test-install
+          cd /tmp/test-install
+
+          # Pack the built package
+          cd $GITHUB_WORKSPACE
+          npm pack
+
+          # Install the packed package
+          cd /tmp/test-install
+          npm init -y
+          npm install $GITHUB_WORKSPACE/call-structure-ts-*.tgz
+
+          # Test the installed package
+          ./node_modules/.bin/call-structure --version
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "clean_version=${VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Update package.json version
+        run: |
+          VERSION="${{ steps.get_version.outputs.clean_version }}"
+          npm version $VERSION --no-git-tag-version
+
+      - name: Publish to npm
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          body: |
+            ## What's Changed
+
+            This release includes the latest features and improvements to Call Structure TS.
+
+            ### Installation
+
+            ```bash
+            npm install -g call-structure-ts@${{ steps.get_version.outputs.clean_version }}
+            ```
+
+            ### Documentation
+
+            - [README](https://github.com/hidenorigoto/call-structure-ts/blob/main/README.md)
+            - [Contributing Guide](https://github.com/hidenorigoto/call-structure-ts/blob/main/CONTRIBUTING.md)
+            - [Troubleshooting](https://github.com/hidenorigoto/call-structure-ts/blob/main/docs/TROUBLESHOOTING.md)
+
+            **Full Changelog**: https://github.com/hidenorigoto/call-structure-ts/compare/v${{ steps.get_version.outputs.clean_version }}...HEAD
+          files: |
+            dist/**/*
+            package.json
+            README.md
+            CONTRIBUTING.md
+            docs/TROUBLESHOOTING.md
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+      - name: Notify release
+        run: |
+          echo "🎉 Successfully released Call Structure TS ${{ steps.get_version.outputs.version }}"
+          echo "📦 NPM: https://www.npmjs.com/package/call-structure-ts"
+          echo "🔖 GitHub: https://github.com/hidenorigoto/call-structure-ts/releases/tag/${{ steps.get_version.outputs.version }}"

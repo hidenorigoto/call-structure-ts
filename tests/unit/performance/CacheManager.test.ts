@@ -11,15 +11,15 @@ describe('CacheManager', () => {
   const mockFilePath = '/test/file.ts';
   const mockAnalysisResult = {
     filePath: mockFilePath,
+    nodes: [],
+    edges: [],
     imports: [],
     exports: [],
     analyzedAt: new Date().toISOString(),
-    functions: [
-      {
-        name: 'testFunction',
-        calls: [],
-      },
-    ],
+    metrics: {
+      functionCount: 1,
+      classCount: 0,
+    },
   };
 
   beforeEach(() => {
@@ -28,9 +28,9 @@ describe('CacheManager', () => {
     (fs.ensureDirSync as jest.Mock).mockReturnValue(undefined);
     (fs.readJson as jest.Mock).mockResolvedValue({});
     (fs.writeJson as jest.Mock).mockResolvedValue(undefined);
-    (fs.readFile as jest.Mock).mockResolvedValue('file content');
-    (fs.readdir as jest.Mock).mockResolvedValue([]);
-    (fs.stat as jest.Mock).mockResolvedValue({ mtime: new Date() });
+    (fs.readFile as unknown as jest.Mock).mockResolvedValue('file content');
+    (fs.readdir as unknown as jest.Mock).mockResolvedValue([]);
+    (fs.stat as unknown as jest.Mock).mockResolvedValue({ mtime: new Date() });
     (fs.remove as jest.Mock).mockResolvedValue(undefined);
     (fs.emptyDir as jest.Mock).mockResolvedValue(undefined);
 

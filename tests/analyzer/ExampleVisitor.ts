@@ -3,7 +3,7 @@ import { Node } from 'ts-morph';
 
 /**
  * Example visitor that counts different types of nodes in the AST
- * 
+ *
  * This demonstrates how to extend the ASTVisitor base class to implement
  * custom analysis logic.
  */
@@ -23,7 +23,7 @@ export class NodeCountVisitor extends ASTVisitor<number> {
     return 1 + this.visitChildren(node).reduce((a, b) => a + b, 0);
   }
 
-  protected visitCallExpression(node: Node): number {
+  protected visitCallExpression(_node: Node): number {
     // Count only this node, not children (to avoid double counting)
     return 1;
   }
@@ -32,7 +32,7 @@ export class NodeCountVisitor extends ASTVisitor<number> {
     // For other nodes, just count children
     return this.visitChildren(node).reduce((a, b) => a + b, 0);
   }
-  
+
   protected override visitSourceFile(node: Node): number {
     // For source files, just count children
     return this.visitChildren(node).reduce((a, b) => a + b, 0);
@@ -45,27 +45,27 @@ export class NodeCountVisitor extends ASTVisitor<number> {
 export class FunctionNameCollector extends ASTVisitor<string[]> {
   protected visitFunctionDeclaration(node: Node): string[] {
     let name = 'anonymous';
-    
+
     // Try different ways to get the function name
     if (Node.isFunctionDeclaration(node)) {
       name = node.getName() || 'anonymous';
     } else if (node.getSymbol()) {
       name = node.getSymbol()!.getName() || 'anonymous';
     }
-    
+
     const childNames = this.visitChildren(node).flat();
     return [name, ...childNames];
   }
 
   protected visitMethodDeclaration(node: Node): string[] {
     let name = 'anonymous';
-    
+
     if (Node.isMethodDeclaration(node)) {
       name = node.getName() || 'anonymous';
     } else if (node.getSymbol()) {
       name = node.getSymbol()!.getName() || 'anonymous';
     }
-    
+
     const childNames = this.visitChildren(node).flat();
     return [name, ...childNames];
   }
@@ -76,7 +76,7 @@ export class FunctionNameCollector extends ASTVisitor<string[]> {
     return ['arrow-function', ...childNames];
   }
 
-  protected visitCallExpression(node: Node): string[] {
+  protected visitCallExpression(_node: Node): string[] {
     // Don't collect call expressions
     return [];
   }
@@ -88,15 +88,15 @@ export class FunctionNameCollector extends ASTVisitor<string[]> {
 
   protected override visitFunctionExpression(node: Node): string[] {
     let name = 'anonymous';
-    
+
     if (Node.isFunctionExpression(node)) {
       name = node.getName() || 'anonymous';
     }
-    
+
     const childNames = this.visitChildren(node).flat();
     return [name, ...childNames];
   }
-  
+
   protected override visitSourceFile(node: Node): string[] {
     // For source files, just collect from children
     return this.visitChildren(node).flat();
@@ -127,7 +127,7 @@ export class MaxDepthVisitor extends ASTVisitor<number> {
     return Math.max(this.getCurrentDepth(), ...childDepths, 0);
   }
 
-  protected visitCallExpression(node: Node): number {
+  protected visitCallExpression(_node: Node): number {
     this.updateMaxDepth();
     return this.getCurrentDepth();
   }
@@ -137,11 +137,33 @@ export class MaxDepthVisitor extends ASTVisitor<number> {
     const childDepths = this.visitChildren(node);
     return Math.max(this.getCurrentDepth(), ...childDepths, 0);
   }
-  
+
   protected override visitSourceFile(node: Node): number {
     this.updateMaxDepth();
     const childDepths = this.visitChildren(node);
     return Math.max(this.getCurrentDepth(), ...childDepths, 0);
+  }
+
+  // Override visitChildren to track depth at the right time
+  protected override visitChildren(node: Node): number[] {
+    const results: number[] = [];
+
+    node.forEachChild(child => {
+      // Increment depth before visiting child
+      (this as unknown as { context: { depth: number } }).context.depth++;
+      this.updateMaxDepth(); // Track depth after increment
+
+      const result = this.visit(child);
+
+      // Decrement depth after visiting child
+      (this as unknown as { context: { depth: number } }).context.depth--;
+
+      if (result !== undefined) {
+        results.push(result);
+      }
+    });
+
+    return results;
   }
 
   private updateMaxDepth(): void {

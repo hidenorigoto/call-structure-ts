@@ -1,5 +1,10 @@
 import { CallGraph } from '../types/CallGraph';
-import { Formatter, FormatOptions, ValidationResult, CircularReferenceStrategy } from '../types/Formatter';
+import {
+  Formatter,
+  FormatOptions,
+  ValidationResult,
+  CircularReferenceStrategy,
+} from '../types/Formatter';
 import { Writable } from 'stream';
 
 /**
@@ -23,23 +28,23 @@ export interface MermaidFormatOptions extends FormatOptions {
 export class MermaidFormatter implements Formatter {
   format(callGraph: CallGraph, options: FormatOptions = {}): string {
     const mermaidOptions = options as MermaidFormatOptions;
-    
+
     // Handle circular references if needed
     const processedGraph = this.handleCircularReferences(callGraph, options);
-    
+
     // Apply node limit if specified
     const limitedGraph = this.applyNodeLimit(processedGraph, mermaidOptions.maxNodes);
-    
+
     // Choose diagram type
     if (mermaidOptions.diagramType === 'sequence') {
       return this.formatAsSequenceDiagram(limitedGraph);
     }
-    
+
     // Default to flowchart with clustering option
     if (mermaidOptions.clusterByModule) {
       return this.formatWithSubgraphs(limitedGraph, mermaidOptions);
     }
-    
+
     return this.formatAsFlowchart(limitedGraph, mermaidOptions);
   }
 
@@ -108,7 +113,11 @@ export class MermaidFormatter implements Formatter {
 
   private nodeMap = new Map<string, string>();
 
-  private generateEdgeDefinitions(edges: CallGraph['edges'], _nodes: CallGraph['nodes'], showEdgeLabels?: boolean): string[] {
+  private generateEdgeDefinitions(
+    edges: CallGraph['edges'],
+    _nodes: CallGraph['nodes'],
+    showEdgeLabels?: boolean
+  ): string[] {
     const lines: string[] = [];
     const edgeMap = new Map<string, number>();
 
@@ -461,7 +470,7 @@ export class MermaidFormatter implements Formatter {
     const firstLine = lines[0].trim();
     const isFlowchart = firstLine.startsWith('flowchart');
     const isSequence = firstLine.startsWith('sequenceDiagram');
-    
+
     if (!isFlowchart && !isSequence) {
       return { isValid: false, error: 'Invalid diagram type' };
     }
@@ -496,12 +505,12 @@ export class MermaidFormatter implements Formatter {
 
     return { isValid: true };
   }
-  
+
   private validateSequenceDiagram(lines: string[]): ValidationResult {
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
-      
+
       // Valid sequence diagram elements
       if (line.startsWith('participant ')) continue;
       if (line.startsWith('actor ')) continue;
@@ -515,21 +524,24 @@ export class MermaidFormatter implements Formatter {
       if (line.startsWith('rect ')) continue;
       if (line === 'end') continue;
       if (line.startsWith('%% ')) continue; // Comment
-      
+
       // Check for message arrows
-      const hasSequenceArrow = 
+      const hasSequenceArrow =
         line.includes('->>') ||
         line.includes('-->>') ||
         line.includes('->>+') ||
         line.includes('->>-') ||
         line.includes('->') ||
         line.includes('-->');
-        
+
       if (!hasSequenceArrow && line.length > 0) {
-        return { isValid: false, error: `Invalid sequence diagram syntax at line ${i + 1}: ${line}` };
+        return {
+          isValid: false,
+          error: `Invalid sequence diagram syntax at line ${i + 1}: ${line}`,
+        };
       }
     }
-    
+
     return { isValid: true };
   }
 
@@ -540,20 +552,20 @@ export class MermaidFormatter implements Formatter {
   formatStream(callGraph: CallGraph, stream: Writable, options: FormatOptions = {}): void {
     const mermaidOptions = options as MermaidFormatOptions;
     const chunkSize = options.chunkSize || 100;
-    
+
     try {
       // Handle circular references if needed
       const processedGraph = this.handleCircularReferences(callGraph, options);
-      
+
       // Apply node limit if specified
       const limitedGraph = this.applyNodeLimit(processedGraph, mermaidOptions.maxNodes);
-      
+
       // Choose diagram type
       if (mermaidOptions.diagramType === 'sequence') {
         this.streamSequenceDiagram(limitedGraph, stream, mermaidOptions);
         return;
       }
-      
+
       // Default to flowchart
       if (mermaidOptions.clusterByModule) {
         this.streamSubgraphDiagram(limitedGraph, stream, mermaidOptions, chunkSize);
@@ -566,51 +578,51 @@ export class MermaidFormatter implements Formatter {
   }
 
   private streamFlowchartDiagram(
-    callGraph: CallGraph, 
-    stream: Writable, 
+    callGraph: CallGraph,
+    stream: Writable,
     options: MermaidFormatOptions,
     chunkSize: number
   ): void {
     const { nodes, edges } = callGraph;
-    
+
     // Write theme if specified
     if (options.theme && options.theme !== 'default') {
       stream.write(`%%{init: {'theme':'${options.theme}'}}%%\n`);
     }
-    
+
     // Write diagram header
     const direction = options.direction || 'TD';
     stream.write(`flowchart ${direction}\n\n`);
-    
+
     // Stream nodes in chunks
     for (let i = 0; i < nodes.length; i += chunkSize) {
       const chunk = nodes.slice(i, i + chunkSize);
       const nodeDefinitions = this.generateNodeDefinitions(chunk, callGraph.entryPointId);
       stream.write(nodeDefinitions.join('\n') + '\n');
     }
-    
+
     stream.write('\n');
-    
+
     // Stream edges in chunks
     for (let i = 0; i < edges.length; i += chunkSize) {
       const chunk = edges.slice(i, i + chunkSize);
       const edgeDefinitions = this.generateEdgeDefinitions(chunk, nodes, options.showEdgeLabels);
       stream.write(edgeDefinitions.join('\n') + '\n');
     }
-    
+
     stream.write('\n');
-    
+
     // Write styling
     const styleDefinitions = this.generateStyleDefinitions(nodes, callGraph.entryPointId);
     stream.write(styleDefinitions.join('\n') + '\n');
-    
+
     // Add click events if requested
     if (options.includeMetadata) {
       stream.write('\n');
       const clickEvents = this.generateClickEvents(nodes);
       stream.write(clickEvents.join('\n') + '\n');
     }
-    
+
     stream.end();
   }
 
@@ -621,50 +633,50 @@ export class MermaidFormatter implements Formatter {
     chunkSize: number
   ): void {
     const { nodes, edges } = callGraph;
-    
+
     stream.write('flowchart TD\n\n');
-    
+
     // Group nodes by file
     const fileGroups = this.groupNodesByFile(nodes);
     let subgraphIndex = 0;
-    
+
     // Stream subgraphs
     for (const [filePath, fileNodes] of fileGroups) {
       const fileName = this.getFileName(filePath);
       const subgraphId = `sg${subgraphIndex++}`;
-      
+
       stream.write(`    subgraph ${subgraphId}["📁 ${fileName}"]\n`);
-      
+
       for (let i = 0; i < fileNodes.length; i += chunkSize) {
         const chunk = fileNodes.slice(i, i + chunkSize);
         chunk.forEach((node, index) => {
           const safeId = this.generateSafeNodeId(node, index);
           this.nodeMap.set(node.id, safeId);
-          
+
           const label = node.name;
           const shape = this.getNodeShape(node, node.id === callGraph.entryPointId);
-          
+
           stream.write(`        ${safeId}${shape.start}"${label}"${shape.end}\n`);
         });
       }
-      
+
       stream.write('    end\n\n');
     }
-    
+
     // Stream edges in chunks
     for (let i = 0; i < edges.length; i += chunkSize) {
       const chunk = edges.slice(i, i + chunkSize);
       chunk.forEach(edge => {
         const sourceId = this.nodeMap.get(edge.source);
         const targetId = this.nodeMap.get(edge.target);
-        
+
         if (sourceId && targetId) {
           const arrow = this.getArrowStyle(edge.type);
           stream.write(`    ${sourceId} ${arrow} ${targetId}\n`);
         }
       });
     }
-    
+
     stream.end();
   }
 
@@ -674,10 +686,10 @@ export class MermaidFormatter implements Formatter {
     _options: MermaidFormatOptions
   ): void {
     const { nodes, edges, entryPointId } = callGraph;
-    
+
     stream.write('sequenceDiagram\n');
     stream.write('    participant Entry as Entry Point\n');
-    
+
     // Add participants
     const participants = new Set<string>();
     nodes.forEach(node => {
@@ -686,49 +698,49 @@ export class MermaidFormatter implements Formatter {
         participants.add(participant);
       }
     });
-    
+
     participants.forEach(participant => {
       stream.write(`    participant ${participant}\n`);
     });
-    
+
     stream.write('\n');
-    
+
     // Stream sequence of calls
     let stepNumber = 1;
     const processedEdges = new Set<string>();
-    
+
     const addCallSequence = (nodeId: string, depth: number = 0): void => {
       if (depth > 5) return;
-      
+
       const outgoingEdges = edges.filter(
         edge => edge.source === nodeId && !processedEdges.has(edge.id)
       );
-      
+
       outgoingEdges.forEach(edge => {
         processedEdges.add(edge.id);
-        
+
         const sourceNode = nodes.find(n => n.id === edge.source);
         const targetNode = nodes.find(n => n.id === edge.target);
-        
+
         if (sourceNode && targetNode) {
           const sourceParticipant =
             edge.source === entryPointId
               ? 'Entry'
               : sourceNode.className || this.getFileName(sourceNode.filePath);
-          
+
           const targetParticipant = targetNode.className || this.getFileName(targetNode.filePath);
-          
+
           const arrow = edge.type === 'async' ? '->>+' : '->>';
           const label = `${stepNumber++}. ${targetNode.name}`;
-          
+
           stream.write(`    ${sourceParticipant} ${arrow} ${targetParticipant}: ${label}\n`);
-          
+
           // Recursively process calls from target
           addCallSequence(edge.target, depth + 1);
         }
       });
     };
-    
+
     addCallSequence(entryPointId);
     stream.end();
   }
@@ -738,12 +750,12 @@ export class MermaidFormatter implements Formatter {
    */
   private handleCircularReferences(callGraph: CallGraph, options: FormatOptions): CallGraph {
     const strategy = options.circularReferenceStrategy || CircularReferenceStrategy.REFERENCE;
-    
+
     if (strategy === CircularReferenceStrategy.OMIT) {
       // Remove edges that create cycles
       const cycles = this.detectCycles(callGraph);
       const cyclicEdges = new Set<string>();
-      
+
       cycles.forEach(cycle => {
         // Find the edge that completes the cycle
         const lastEdge = callGraph.edges.find(
@@ -753,31 +765,31 @@ export class MermaidFormatter implements Formatter {
           cyclicEdges.add(lastEdge.id);
         }
       });
-      
+
       return {
         ...callGraph,
-        edges: callGraph.edges.filter(e => !cyclicEdges.has(e.id))
+        edges: callGraph.edges.filter(e => !cyclicEdges.has(e.id)),
       };
     } else if (strategy === CircularReferenceStrategy.REFERENCE) {
       // Mark circular edges with a special property
       const cycles = this.detectCycles(callGraph);
       const markedEdges = [...callGraph.edges];
-      
+
       cycles.forEach(cycle => {
         const lastEdge = markedEdges.find(
           e => e.source === cycle[cycle.length - 2] && e.target === cycle[cycle.length - 1]
         );
         if (lastEdge) {
-          (lastEdge as any).circular = true;
+          (lastEdge as typeof lastEdge & { circular: boolean }).circular = true;
         }
       });
-      
+
       return {
         ...callGraph,
-        edges: markedEdges
+        edges: markedEdges,
       };
     }
-    
+
     // INLINE_ONCE - for Mermaid we'll just return as-is since Mermaid handles cycles
     return callGraph;
   }
@@ -789,41 +801,41 @@ export class MermaidFormatter implements Formatter {
     if (!maxNodes || callGraph.nodes.length <= maxNodes) {
       return callGraph;
     }
-    
+
     // Prioritize nodes based on their connectivity
     const nodeScores = new Map<string, number>();
-    
+
     // Initialize scores
     callGraph.nodes.forEach(node => {
       nodeScores.set(node.id, 0);
     });
-    
+
     // Score based on edges (both incoming and outgoing)
     callGraph.edges.forEach(edge => {
       nodeScores.set(edge.source, (nodeScores.get(edge.source) || 0) + 1);
       nodeScores.set(edge.target, (nodeScores.get(edge.target) || 0) + 1);
     });
-    
+
     // Always include entry point
     nodeScores.set(callGraph.entryPointId, Infinity);
-    
+
     // Sort nodes by score and take top N
     const sortedNodes = [...callGraph.nodes].sort(
       (a, b) => (nodeScores.get(b.id) || 0) - (nodeScores.get(a.id) || 0)
     );
-    
+
     const selectedNodes = sortedNodes.slice(0, maxNodes);
     const selectedNodeIds = new Set(selectedNodes.map(n => n.id));
-    
+
     // Filter edges to only include those between selected nodes
     const filteredEdges = callGraph.edges.filter(
       edge => selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target)
     );
-    
+
     return {
       ...callGraph,
       nodes: selectedNodes,
-      edges: filteredEdges
+      edges: filteredEdges,
     };
   }
 
@@ -833,7 +845,7 @@ export class MermaidFormatter implements Formatter {
   private detectCycles(callGraph: CallGraph): string[][] {
     const { nodes, edges } = callGraph;
     const cycles: string[][] = [];
-    
+
     // For large graphs, use a simpler approach
     if (nodes.length > 1000) {
       // Simple self-loop detection
@@ -844,10 +856,10 @@ export class MermaidFormatter implements Formatter {
       });
       return cycles;
     }
-    
+
     // For smaller graphs, use proper DFS
     const adjacencyList = new Map<string, string[]>();
-    
+
     // Build adjacency list
     nodes.forEach(node => adjacencyList.set(node.id, []));
     edges.forEach(edge => {
@@ -855,17 +867,17 @@ export class MermaidFormatter implements Formatter {
       neighbors.push(edge.target);
       adjacencyList.set(edge.source, neighbors);
     });
-    
+
     // DFS to detect cycles
     const visited = new Set<string>();
     const recStack = new Set<string>();
     const path: string[] = [];
-    
+
     const dfs = (nodeId: string): void => {
       visited.add(nodeId);
       recStack.add(nodeId);
       path.push(nodeId);
-      
+
       const neighbors = adjacencyList.get(nodeId) || [];
       for (const neighbor of neighbors) {
         if (!visited.has(neighbor)) {
@@ -876,18 +888,18 @@ export class MermaidFormatter implements Formatter {
           cycles.push([...path.slice(cycleStart), neighbor]);
         }
       }
-      
+
       path.pop();
       recStack.delete(nodeId);
     };
-    
+
     // Run DFS from each unvisited node
     nodes.forEach(node => {
       if (!visited.has(node.id)) {
         dfs(node.id);
       }
     });
-    
+
     return cycles;
   }
 }

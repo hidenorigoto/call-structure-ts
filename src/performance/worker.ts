@@ -3,7 +3,7 @@ import { CallGraphAnalyzer } from '../analyzer/CallGraphAnalyzer';
 import { AnalysisResult } from '../types/AnalysisResult';
 import { CallGraphNode, CallGraphEdge, ProjectContext } from '../types/CallGraph';
 import * as path from 'path';
-import { SyntaxKind } from 'ts-morph';
+import { SyntaxKind, CallExpression } from 'ts-morph';
 
 interface WorkerMessage {
   type: 'analyze';
@@ -86,7 +86,7 @@ if (parentPort) {
             // This is a simplified version - real implementation would be more thorough
             const calls = func.getDescendantsOfKind(SyntaxKind.CallExpression);
             for (const call of calls) {
-              const expression = (call as any).getExpression?.();
+              const expression = (call as CallExpression).getExpression?.();
               if (expression) {
                 const callName = expression.getText();
                 edges.push({

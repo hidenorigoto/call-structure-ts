@@ -1,5 +1,6 @@
 import { CallGraphAnalyzer } from '../analyzer/CallGraphAnalyzer';
-import { CallGraph, ProjectContext } from '../types/CallGraph';
+import { CallGraph, ProjectContext, CallGraphNode, CallGraphEdge } from '../types/CallGraph';
+import { AnalysisResult } from '../types/AnalysisResult';
 import { CacheManager } from './CacheManager';
 import { ParallelAnalyzer } from './ParallelAnalyzer';
 import { ProgressReporter } from './ProgressReporter';
@@ -160,7 +161,7 @@ export class IncrementalAnalyzer extends EventEmitter {
     return graph;
   }
 
-  private async analyzeFile(filePath: string): Promise<any> {
+  private async analyzeFile(filePath: string): Promise<AnalysisResult> {
     const sourceFile = this.analyzer['project'].getSourceFile(filePath);
     if (!sourceFile) {
       throw new Error(`File not found: ${filePath}`);
@@ -195,13 +196,13 @@ export class IncrementalAnalyzer extends EventEmitter {
     });
 
     this.fileWatcher
-      .on('add', (filePath: any) => this.handleFileChange('add', filePath))
-      .on('change', (filePath: any) => this.handleFileChange('change', filePath))
-      .on('unlink', (filePath: any) => this.handleFileChange('unlink', filePath))
-      .on('error', (error: any) => this.emit('watchError', error));
+      .on('add', (filePath: string) => this.handleFileChange('add', filePath))
+      .on('change', (filePath: string) => this.handleFileChange('change', filePath))
+      .on('unlink', (filePath: string) => this.handleFileChange('unlink', filePath))
+      .on('error', (error: unknown) => this.emit('watchError', error));
   }
 
-  private handleFileChange(type: 'add' | 'change' | 'unlink', filePath: any): void {
+  private handleFileChange(type: 'add' | 'change' | 'unlink', filePath: string): void {
     // Only process TypeScript files
     if (!filePath.endsWith('.ts') && !filePath.endsWith('.tsx')) {
       return;
@@ -252,14 +253,14 @@ export class IncrementalAnalyzer extends EventEmitter {
     return [parts[0], parts[1]];
   }
 
-  private mergeResults(results: Map<string, any>): CallGraph {
+  private mergeResults(results: Map<string, AnalysisResult>): CallGraph {
     // Simple merge implementation - would be more sophisticated in practice
-    const nodes: any[] = [];
-    const edges: any[] = [];
+    const nodes: CallGraphNode[] = [];
+    const edges: CallGraphEdge[] = [];
 
     for (const [, result] of results) {
-      nodes.push(...(result.nodes || []));
-      edges.push(...(result.edges || []));
+      nodes.push(...result.nodes);
+      edges.push(...result.edges);
     }
 
     return {
@@ -277,7 +278,7 @@ export class IncrementalAnalyzer extends EventEmitter {
     };
   }
 
-  private resultToCallGraph(result: any): CallGraph {
+  private resultToCallGraph(result: AnalysisResult): CallGraph {
     return {
       metadata: {
         generatedAt: result.analyzedAt,
@@ -287,13 +288,13 @@ export class IncrementalAnalyzer extends EventEmitter {
         totalFiles: 1,
         analysisTimeMs: 0,
       },
-      nodes: result.nodes || [],
-      edges: result.edges || [],
-      entryPointId: result.nodes?.[0]?.id || '',
+      nodes: result.nodes,
+      edges: result.edges,
+      entryPointId: result.nodes[0]?.id || '',
     };
   }
 
-  private callGraphToResult(graph: CallGraph): any {
+  private callGraphToResult(graph: CallGraph): AnalysisResult {
     return {
       filePath: graph.metadata.entryPoint,
       nodes: graph.nodes,
@@ -328,7 +329,7 @@ export class IncrementalAnalyzer extends EventEmitter {
     await this.cache.clear();
   }
 
-  async getCacheStats(): Promise<any> {
+  async getCacheStats(): Promise<object> {
     return this.cache.getCacheStats();
   }
 

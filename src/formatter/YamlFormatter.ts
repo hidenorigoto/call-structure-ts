@@ -1,6 +1,11 @@
 import * as yaml from 'js-yaml';
 import { CallGraph } from '../types/CallGraph';
-import { Formatter, FormatOptions, ValidationResult, CircularReferenceStrategy } from '../types/Formatter';
+import {
+  Formatter,
+  FormatOptions,
+  ValidationResult,
+  CircularReferenceStrategy,
+} from '../types/Formatter';
 import { Writable } from 'stream';
 
 /**
@@ -21,8 +26,8 @@ export class YamlFormatter implements Formatter {
   format(callGraph: CallGraph, options: FormatOptions = {}): string {
     // Handle circular references if needed
     const processedGraph = this.handleCircularReferences(callGraph, options);
-    
-    const output: any = {};
+
+    const output: Record<string, unknown> = {};
     const yamlOptions = options as YamlFormatOptions;
 
     // Metadata section
@@ -64,8 +69,8 @@ export class YamlFormatter implements Formatter {
     return yamlString;
   }
 
-  private formatMetadata(metadata: CallGraph['metadata']): any {
-    const formattedMetadata: any = {
+  private formatMetadata(metadata: CallGraph['metadata']): Record<string, unknown> {
+    const formattedMetadata: Record<string, unknown> = {
       generated_at: metadata.generatedAt,
       entry_point: metadata.entryPoint,
       project_root: metadata.projectRoot,
@@ -74,17 +79,17 @@ export class YamlFormatter implements Formatter {
       max_depth: metadata.maxDepth,
       total_files: metadata.totalFiles,
     };
-    
+
     // Include circular references if present
-    if ((metadata as any).circularReferences) {
-      formattedMetadata.circularReferences = (metadata as any).circularReferences;
+    if ('circularReferences' in metadata) {
+      formattedMetadata.circularReferences = metadata.circularReferences;
     }
-    
+
     return formattedMetadata;
   }
 
-  private formatNode(node: CallGraph['nodes'][0]): any {
-    const formatted: any = {
+  private formatNode(node: CallGraph['nodes'][0]): Record<string, unknown> {
+    const formatted: Record<string, unknown> = {
       id: node.id,
       name: node.name,
       type: node.type,
@@ -122,7 +127,7 @@ export class YamlFormatter implements Formatter {
     return formatted;
   }
 
-  private formatEdge(edge: CallGraph['edges'][0], callGraph: CallGraph): any {
+  private formatEdge(edge: CallGraph['edges'][0], callGraph: CallGraph): Record<string, unknown> {
     const sourceNode = this.findNodeById(callGraph, edge.source);
     const targetNode = this.findNodeById(callGraph, edge.target);
 
@@ -145,7 +150,7 @@ export class YamlFormatter implements Formatter {
     };
   }
 
-  private generateYamlStatistics(callGraph: CallGraph): any {
+  private generateYamlStatistics(callGraph: CallGraph): Record<string, unknown> {
     const { nodes, edges } = callGraph;
 
     // Basic counts
@@ -265,11 +270,11 @@ export class YamlFormatter implements Formatter {
     );
   }
 
-  private buildCallTree(callGraph: CallGraph): any {
+  private buildCallTree(callGraph: CallGraph): Record<string, unknown> | null {
     const { nodes, edges, entryPointId } = callGraph;
     const visited = new Set<string>();
 
-    const buildNode = (nodeId: string, depth: number = 0): any => {
+    const buildNode = (nodeId: string, depth: number = 0): Record<string, unknown> | null => {
       if (visited.has(nodeId) || depth > 10) {
         return { function: nodes.find(n => n.id === nodeId)?.name || 'unknown', circular: true };
       }
@@ -292,7 +297,7 @@ export class YamlFormatter implements Formatter {
         })
         .filter(Boolean);
 
-      const result: any = {
+      const result: Record<string, unknown> = {
         function: node.name,
         type: node.type,
         file: this.getRelativePath(node.filePath),
@@ -357,20 +362,21 @@ export class YamlFormatter implements Formatter {
   /**
    * Parse YAML specification back to CallGraph structure
    */
-  parseSpecification(yamlContent: string): any {
+  parseSpecification(yamlContent: string): Record<string, unknown> {
     try {
-      const spec = yaml.load(yamlContent) as any;
+      const spec = yaml.load(yamlContent) as Record<string, unknown>;
 
       if (!spec.test_specification) {
         throw new Error('Invalid specification format: missing test_specification');
       }
 
+      const testSpec = spec.test_specification as Record<string, unknown>;
       return {
-        entryPoint: spec.test_specification.entry_point,
-        requiredFunctions: spec.test_specification.required_functions || [],
-        requiredCalls: spec.test_specification.required_calls || [],
-        constraints: spec.test_specification.constraints || {},
-        description: spec.test_specification.description,
+        entryPoint: testSpec.entry_point,
+        requiredFunctions: testSpec.required_functions || [],
+        requiredCalls: testSpec.required_calls || [],
+        constraints: testSpec.constraints || {},
+        description: testSpec.description,
       };
     } catch (error) {
       throw new Error(
@@ -399,9 +405,9 @@ export class YamlFormatter implements Formatter {
    */
   validate(yamlString: string): ValidationResult {
     const warnings: string[] = [];
-    
+
     try {
-      const parsed = yaml.load(yamlString) as any;
+      const parsed = yaml.load(yamlString) as Record<string, unknown>;
 
       // Check for required fields
       if (!parsed.functions || !Array.isArray(parsed.functions)) {
@@ -435,7 +441,9 @@ export class YamlFormatter implements Formatter {
 
       // Check for potential issues
       if (parsed.functions.length > 10000) {
-        warnings.push('Large number of functions detected (>10,000). Consider using streaming for better performance.');
+        warnings.push(
+          'Large number of functions detected (>10,000). Consider using streaming for better performance.'
+        );
       }
 
       return { isValid: true, warnings: warnings.length > 0 ? warnings : undefined };
@@ -454,14 +462,14 @@ export class YamlFormatter implements Formatter {
   formatStream(callGraph: CallGraph, stream: Writable, options: FormatOptions = {}): void {
     const yamlOptions = options as YamlFormatOptions;
     const chunkSize = options.chunkSize || 100;
-    
+
     try {
       // Handle circular references if needed
       const processedGraph = this.handleCircularReferences(callGraph, options);
-      
+
       // Write YAML header
       stream.write('---\n');
-      
+
       // Write metadata if requested
       if (options.includeMetadata !== false) {
         stream.write('metadata:\n');
@@ -472,13 +480,13 @@ export class YamlFormatter implements Formatter {
         stream.write(this.indentYaml(metadataYaml, 2));
         stream.write('\n');
       }
-      
+
       // Write entry point
       stream.write('entry_point:\n');
       const entryNode = this.findNodeById(processedGraph, processedGraph.entryPointId);
       stream.write(`  id: ${processedGraph.entryPointId}\n`);
       stream.write(`  function: ${entryNode?.name || 'unknown'}\n\n`);
-      
+
       // Stream functions array
       stream.write('functions:\n');
       for (let i = 0; i < processedGraph.nodes.length; i += chunkSize) {
@@ -494,9 +502,9 @@ export class YamlFormatter implements Formatter {
           stream.write(formattedYaml);
         }
       }
-      
+
       stream.write('\n');
-      
+
       // Stream calls array
       stream.write('calls:\n');
       for (let i = 0; i < processedGraph.edges.length; i += chunkSize) {
@@ -512,7 +520,7 @@ export class YamlFormatter implements Formatter {
           stream.write(formattedYaml);
         }
       }
-      
+
       // Write statistics if requested
       if (options.includeMetrics) {
         stream.write('\nstatistics:\n');
@@ -522,7 +530,7 @@ export class YamlFormatter implements Formatter {
         });
         stream.write(this.indentYaml(statsYaml, 2));
       }
-      
+
       stream.end();
     } catch (error) {
       stream.emit('error', error);
@@ -534,7 +542,7 @@ export class YamlFormatter implements Formatter {
    */
   private handleCircularReferences(callGraph: CallGraph, options: FormatOptions): CallGraph {
     const strategy = options.circularReferenceStrategy || CircularReferenceStrategy.REFERENCE;
-    
+
     if (strategy === CircularReferenceStrategy.OMIT) {
       return this.omitCircularReferences(callGraph);
     } else if (strategy === CircularReferenceStrategy.REFERENCE) {
@@ -566,7 +574,7 @@ export class YamlFormatter implements Formatter {
 
     return {
       ...callGraph,
-      edges: callGraph.edges.filter(edge => !cyclicEdgeIds.has(edge.id))
+      edges: callGraph.edges.filter(edge => !cyclicEdgeIds.has(edge.id)),
     };
   }
 
@@ -582,19 +590,19 @@ export class YamlFormatter implements Formatter {
         const source = cycle[i];
         const target = cycle[i + 1];
         const edgeIndex = processedEdges.findIndex(e => e.source === source && e.target === target);
-        
+
         if (edgeIndex >= 0) {
           processedEdges[edgeIndex] = {
             ...processedEdges[edgeIndex],
             circular: true,
-          } as any;
+          } as (typeof processedEdges)[number];
         }
       }
     });
 
     return {
       ...callGraph,
-      edges: processedEdges
+      edges: processedEdges,
     };
   }
 
@@ -605,17 +613,17 @@ export class YamlFormatter implements Formatter {
     // For YAML, we'll mark nodes that should use anchors
     const cycles = this.detectCycles(callGraph);
     const circularNodeIds = new Set<string>();
-    
+
     cycles.forEach(cycle => {
       cycle.forEach(nodeId => circularNodeIds.add(nodeId));
     });
-    
+
     return {
       ...callGraph,
       metadata: {
         ...callGraph.metadata,
-        circularReferences: cycles.map(cycle => ({ cycle, strategy: 'inline-once' }))
-      } as any
+        circularReferences: cycles.map(cycle => ({ cycle, strategy: 'inline-once' })),
+      } as typeof callGraph.metadata,
     };
   }
 
@@ -626,7 +634,7 @@ export class YamlFormatter implements Formatter {
     const { nodes, edges } = callGraph;
     const adjacencyList = new Map<string, string[]>();
     const cycles: string[][] = [];
-    
+
     // Build adjacency list
     nodes.forEach(node => adjacencyList.set(node.id, []));
     edges.forEach(edge => {
@@ -640,7 +648,7 @@ export class YamlFormatter implements Formatter {
       const visited = new Set<string>();
       const stack = new Set<string>();
       const path: string[] = [];
-      
+
       const dfs = (nodeId: string): void => {
         if (stack.has(nodeId)) {
           // Found a cycle
@@ -650,24 +658,24 @@ export class YamlFormatter implements Formatter {
           }
           return;
         }
-        
+
         if (visited.has(nodeId)) {
           return;
         }
-        
+
         visited.add(nodeId);
         stack.add(nodeId);
         path.push(nodeId);
-        
+
         const neighbors = adjacencyList.get(nodeId) || [];
         for (const neighbor of neighbors) {
           dfs(neighbor);
         }
-        
+
         path.pop();
         stack.delete(nodeId);
       };
-      
+
       nodes.forEach(node => {
         if (!visited.has(node.id)) {
           dfs(node.id);
@@ -691,10 +699,10 @@ export class YamlFormatter implements Formatter {
   private addComments(yamlString: string, callGraph: CallGraph): string {
     const lines = yamlString.split('\n');
     const commentedLines: string[] = [];
-    
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      
+
       // Add comments for specific fields
       if (line.includes('generated_at:')) {
         commentedLines.push(line + ' # Timestamp when this analysis was performed');
@@ -718,7 +726,7 @@ export class YamlFormatter implements Formatter {
         commentedLines.push(line);
       }
     }
-    
+
     // Add header comment
     const header = [
       '# Call Graph Analysis Results',
@@ -728,7 +736,7 @@ export class YamlFormatter implements Formatter {
       `# Analysis Time: ${callGraph.metadata.analysisTimeMs}ms`,
       '',
     ];
-    
+
     return header.join('\n') + commentedLines.join('\n');
   }
 
@@ -737,8 +745,9 @@ export class YamlFormatter implements Formatter {
    */
   private indentYaml(yamlString: string, spaces: number): string {
     const indent = ' '.repeat(spaces);
-    return yamlString.split('\n')
-      .map(line => line ? indent + line : line)
+    return yamlString
+      .split('\n')
+      .map(line => (line ? indent + line : line))
       .join('\n');
   }
 }

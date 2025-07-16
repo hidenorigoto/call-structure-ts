@@ -7,7 +7,9 @@ import {
   OutputFormat,
   ProjectContext,
   CallGraphError,
+  CallGraph,
 } from '../../types/CallGraph';
+import { FormatOptions } from '../../types/Formatter';
 import { PerformanceOptimizer } from '../../performance/PerformanceOptimizer';
 import { logger } from '../../utils/logger';
 import * as fs from 'fs';
@@ -223,7 +225,7 @@ function createAnalysisOptions(options: AnalyzeOptions): CallGraphAnalysisOption
   return analysisOptions;
 }
 
-function formatOutput(callGraph: any, format: OutputFormat, options: any): string {
+function formatOutput(callGraph: CallGraph, format: OutputFormat, options: FormatOptions): string {
   switch (format.toLowerCase()) {
     case 'json':
       return new JsonFormatter().format(callGraph, { format: 'json', ...options });

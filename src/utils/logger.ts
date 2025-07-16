@@ -10,6 +10,16 @@ export enum LogLevel {
 export class Logger {
   private level: LogLevel = LogLevel.INFO;
   private progressEnabled: boolean = true;
+  private suppressInCI: boolean = false;
+
+  constructor() {
+    // Suppress error output in CI when running tests
+    // This prevents expected error messages from cluttering CI output
+    this.suppressInCI = Boolean(
+      process.env.CI && // GitHub Actions, CircleCI, etc set CI=true
+        (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID)
+    );
+  }
 
   setLevel(level: LogLevel): void {
     this.level = level;
@@ -43,7 +53,14 @@ export class Logger {
 
   error(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.ERROR) {
-      console.error(chalk.red('[ERROR]'), message, ...args);
+      if (this.suppressInCI) {
+        // In CI, write plain error message to stderr for tests to capture
+        // but without formatting to reduce noise
+        process.stderr.write(message + '\n');
+      } else {
+        // Normal formatted output
+        console.error(chalk.red('[ERROR]'), message, ...args);
+      }
     }
   }
 

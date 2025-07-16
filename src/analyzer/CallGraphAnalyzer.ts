@@ -51,7 +51,7 @@ export class CallGraphAnalyzer {
 
     // Use ProjectLoader instead of creating Project directly
     this.projectLoader = new ProjectLoader();
-    
+
     // Load project synchronously in constructor for backward compatibility
     // In a real implementation, this should be async
     const projectOptions: { skipAddingFilesFromTsConfig: boolean; tsConfigFilePath?: string } = {
@@ -65,19 +65,23 @@ export class CallGraphAnalyzer {
     // For now, keep direct Project creation for backward compatibility
     // TODO: Refactor to use async initialization
     this.project = new Project(projectOptions);
-    
+
     // If no tsconfig is provided, add source files manually
     if (!context.tsConfigPath) {
       const sourcePatterns = context.sourcePatterns || ['src/**/*.ts', 'src/**/*.tsx'];
-      const excludePatterns = context.excludePatterns || ['node_modules/**', '**/*.test.ts', '**/*.spec.ts'];
-      
+      const excludePatterns = context.excludePatterns || [
+        'node_modules/**',
+        '**/*.test.ts',
+        '**/*.spec.ts',
+      ];
+
       // Add source files using glob patterns
       this.project.addSourceFilesAtPaths([
         ...sourcePatterns.map(pattern => path.join(context.rootPath, pattern)),
-        ...excludePatterns.map(pattern => '!' + path.join(context.rootPath, pattern))
+        ...excludePatterns.map(pattern => '!' + path.join(context.rootPath, pattern)),
       ]);
     }
-    
+
     this.entryPointFinder = new EntryPointFinder(this.project);
 
     logger.debug(`Initialized CallGraphAnalyzer with context:`, context);
@@ -112,19 +116,37 @@ export class CallGraphAnalyzer {
         }
         throw error;
       }
-      
+
       const entryNode = entryPointInfo.node;
       const entryNodeId = this.generateNodeId(entryNode);
-      
+
       logger.debug(`Found entry point node: ${entryNodeId}`);
 
       // Perform analysis
       await this.analyzeNode(entryNode, 0);
 
       const analysisTime = Date.now() - startTime;
+
+      // Collect performance metrics
+      const performanceMetrics = {
+        analysisTime,
+        totalNodes: this.nodes.size,
+        totalEdges: this.edges.length,
+        memoryUsage: process.memoryUsage().heapUsed / 1024 / 1024, // MB
+        filesAnalyzed: this.project.getSourceFiles().length,
+        nodesPerSecond: Math.round(this.nodes.size / (analysisTime / 1000)),
+        averageDepth: this.calculateAverageDepth(),
+      };
+
       logger.success(
         `Analysis completed in ${analysisTime}ms. Found ${this.nodes.size} nodes and ${this.edges.length} edges.`
       );
+
+      // Log performance metrics in debug mode
+      if (logger.getLevel() === 0) {
+        // LogLevel.DEBUG
+        logger.debug('Performance metrics:', performanceMetrics);
+      }
 
       // Build result
       const metadata: CallGraphMetadata = {
@@ -135,6 +157,7 @@ export class CallGraphAnalyzer {
         tsConfigPath: this.context.tsConfigPath || undefined,
         totalFiles: this.project.getSourceFiles().length,
         analysisTimeMs: analysisTime,
+        performance: performanceMetrics,
       };
 
       return {
@@ -547,5 +570,29 @@ export class CallGraphAnalyzer {
       filePath.includes('/test/') ||
       filePath.includes('/tests/')
     );
+  }
+
+  /**
+   * Calculate average depth of call graph nodes
+   *
+   * @returns Average depth of analyzed nodes
+   */
+  private calculateAverageDepth(): number {
+    if (this.nodes.size === 0) {
+      return 0;
+    }
+
+    let totalDepth = 0;
+    let nodeCount = 0;
+
+    for (const [nodeId] of this.nodes) {
+      // Calculate depth based on incoming edges
+      const incomingEdges = this.edges.filter(edge => edge.target === nodeId);
+      const depth = incomingEdges.length;
+      totalDepth += depth;
+      nodeCount++;
+    }
+
+    return nodeCount > 0 ? totalDepth / nodeCount : 0;
   }
 }

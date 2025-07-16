@@ -176,7 +176,7 @@ export class PerformanceOptimizer {
     return [parts[0], parts[1]];
   }
 
-  async getCacheStats(): Promise<any> {
+  async getCacheStats(): Promise<object | null> {
     if (!this.cacheManager) {
       return null;
     }

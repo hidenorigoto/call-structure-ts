@@ -13,14 +13,14 @@ import { logger } from '../utils/logger';
 
 /**
  * Analyzer for extracting function declarations and metadata from TypeScript code.
- * 
+ *
  * This analyzer extends the ASTVisitor base class to traverse TypeScript AST
  * and collect information about all function-like constructs including:
  * - Function declarations
  * - Function expressions
  * - Arrow functions
  * - Class methods
- * 
+ *
  * @example
  * ```typescript
  * const analyzer = new FunctionAnalyzer();
@@ -30,7 +30,7 @@ import { logger } from '../utils/logger';
 export class FunctionAnalyzer extends ASTVisitor<CallGraphNode[]> {
   /**
    * Analyze a source file and extract all function declarations
-   * 
+   *
    * @param sourceFile The source file to analyze
    * @returns Array of CallGraphNode representing functions found
    */
@@ -41,7 +41,7 @@ export class FunctionAnalyzer extends ASTVisitor<CallGraphNode[]> {
 
   /**
    * Analyze a single function declaration
-   * 
+   *
    * @param func The function declaration to analyze
    * @returns CallGraphNode or null if function should be skipped
    */
@@ -81,14 +81,14 @@ export class FunctionAnalyzer extends ASTVisitor<CallGraphNode[]> {
    */
   protected visitFunctionDeclaration(node: Node): CallGraphNode[] {
     const results: CallGraphNode[] = [];
-    
+
     if (Node.isFunctionDeclaration(node)) {
       const funcNode = this.analyzeFunctionDeclaration(node);
       if (funcNode) {
         results.push(funcNode);
       }
     }
-    
+
     // Continue visiting children
     const childResults = this.visitChildren(node).flat();
     return [...results, ...childResults];
@@ -99,11 +99,11 @@ export class FunctionAnalyzer extends ASTVisitor<CallGraphNode[]> {
    */
   protected override visitFunctionExpression(node: Node): CallGraphNode[] {
     const results: CallGraphNode[] = [];
-    
+
     if (Node.isFunctionExpression(node)) {
       const sourceFile = node.getSourceFile();
       const name = node.getName() || 'anonymous-function-expression';
-      
+
       const funcNode: CallGraphNode = {
         id: this.generateNodeId(node),
         name,
@@ -115,10 +115,10 @@ export class FunctionAnalyzer extends ASTVisitor<CallGraphNode[]> {
         parameters: this.extractParameters(node),
         returnType: node.getReturnType().getText(),
       };
-      
+
       results.push(funcNode);
     }
-    
+
     // Continue visiting children
     const childResults = this.visitChildren(node).flat();
     return [...results, ...childResults];
@@ -129,10 +129,10 @@ export class FunctionAnalyzer extends ASTVisitor<CallGraphNode[]> {
    */
   protected visitArrowFunction(node: Node): CallGraphNode[] {
     const results: CallGraphNode[] = [];
-    
+
     if (Node.isArrowFunction(node)) {
       const sourceFile = node.getSourceFile();
-      
+
       const funcNode: CallGraphNode = {
         id: this.generateNodeId(node),
         name: 'arrow-function',
@@ -144,10 +144,10 @@ export class FunctionAnalyzer extends ASTVisitor<CallGraphNode[]> {
         parameters: this.extractParameters(node),
         returnType: node.getReturnType().getText(),
       };
-      
+
       results.push(funcNode);
     }
-    
+
     // Continue visiting children
     const childResults = this.visitChildren(node).flat();
     return [...results, ...childResults];
@@ -158,12 +158,12 @@ export class FunctionAnalyzer extends ASTVisitor<CallGraphNode[]> {
    */
   protected visitMethodDeclaration(node: Node): CallGraphNode[] {
     const results: CallGraphNode[] = [];
-    
+
     if (Node.isMethodDeclaration(node)) {
       const sourceFile = node.getSourceFile();
       const classDecl = node.getParent();
       const className = Node.isClassDeclaration(classDecl) ? classDecl.getName() : undefined;
-      
+
       const funcNode: CallGraphNode = {
         id: this.generateNodeId(node),
         name: node.getName(),
@@ -178,10 +178,10 @@ export class FunctionAnalyzer extends ASTVisitor<CallGraphNode[]> {
         returnType: node.getReturnType().getText(),
         ...(className && { className }),
       };
-      
+
       results.push(funcNode);
     }
-    
+
     // Continue visiting children
     const childResults = this.visitChildren(node).flat();
     return [...results, ...childResults];
@@ -220,12 +220,12 @@ export class FunctionAnalyzer extends ASTVisitor<CallGraphNode[]> {
   private generateFunctionId(func: FunctionDeclaration): string {
     const name = func.getName() || 'anonymous';
     const filePath = func.getSourceFile().getFilePath();
-    
+
     // For exported functions, use fully qualified name
     if (func.isExported()) {
       return `${filePath}#${name}`;
     }
-    
+
     // For local functions, include line number for uniqueness
     const line = func.getStartLineNumber();
     return `${filePath}#${name}:${line}`;
@@ -281,7 +281,7 @@ export class FunctionAnalyzer extends ASTVisitor<CallGraphNode[]> {
    */
   getFunctionDecorators(func: FunctionDeclaration | MethodDeclaration): string[] {
     if (Node.isMethodDeclaration(func)) {
-      return func.getDecorators().map((dec: any) => dec.getName());
+      return func.getDecorators().map(dec => dec.getName());
     }
     // FunctionDeclaration doesn't support decorators in current TypeScript
     return [];
@@ -296,12 +296,12 @@ export class FunctionAnalyzer extends ASTVisitor<CallGraphNode[]> {
     const filePath = sourceFile.getFilePath();
     const start = node.getStart();
     const kind = node.getKindName();
-    
+
     // For source files, use a special identifier
     if (Node.isSourceFile(node)) {
       return `${filePath}:SourceFile`;
     }
-    
+
     // For other nodes, include the kind to ensure uniqueness
     return `${filePath}:${kind}:${start}`;
   }

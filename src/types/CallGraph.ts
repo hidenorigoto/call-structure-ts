@@ -107,8 +107,8 @@ export interface CallGraphValidationResult {
 export interface CallGraphValidationError {
   type: 'missing_edge' | 'forbidden_edge' | 'missing_node' | 'type_mismatch';
   message: string;
-  expected?: any;
-  actual?: any;
+  expected?: unknown;
+  actual?: unknown;
   location?: {
     file: string;
     line: number;

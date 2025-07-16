@@ -6,15 +6,50 @@ import { EntryPointAnalyzer } from '../analyzer/EntryPointAnalyzer';
 import { JsonFormatter } from '../formatter/JsonFormatter';
 import { YamlFormatter } from '../formatter/YamlFormatter';
 import { MermaidFormatter } from '../formatter/MermaidFormatter';
-import { OutputFormat, ProjectContext, CallGraphError } from '../types/CallGraph';
+import { OutputFormat, ProjectContext, CallGraphError, CallGraph } from '../types/CallGraph';
+import { FormatOptions } from '../types/Formatter';
 import { logger, LogLevel } from '../utils/logger';
 import { analyzeCommand } from './commands/analyze';
 import { testCommand } from './commands/test';
-import { analyzeBatchCommand } from './commands/analyze-batch';
+import { analyzeBatchCommand, BatchConfig } from './commands/analyze-batch';
 import { interactiveCommand } from './commands/interactive';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
+
+// Command option interfaces
+interface DiscoverOptions {
+  pattern?: string;
+  controllers?: boolean;
+  handlers?: boolean;
+  main?: boolean;
+  exported?: boolean;
+  output?: string;
+  format?: OutputFormat;
+  projectRoot?: string;
+  tsconfig?: string;
+}
+
+interface BatchOptions {
+  config: string;
+  projectRoot?: string;
+  tsconfig?: string;
+  outputDir?: string;
+  parallel?: number;
+  continueOnError?: boolean;
+}
+
+interface ValidateOptions {
+  spec: string;
+  entry?: string;
+  projectRoot?: string;
+  tsconfig?: string;
+}
+
+interface BaseProjectOptions {
+  projectRoot?: string;
+  tsconfig?: string;
+}
 
 const program = new Command();
 
@@ -193,7 +228,7 @@ program
     }
   });
 
-async function discoverCommand(options: any): Promise<void> {
+async function discoverCommand(options: DiscoverOptions): Promise<void> {
   logger.progress('Discovering entry points...');
 
   const context = createProjectContext(options);
@@ -202,7 +237,9 @@ async function discoverCommand(options: any): Promise<void> {
   let entryPoints;
 
   if (options.pattern) {
-    entryPoints = await analyzer.findEntryPointsByPattern(options.pattern);
+    entryPoints = await analyzer.findEntryPointsByPattern(
+      Array.isArray(options.pattern) ? options.pattern : [options.pattern!]
+    );
   } else if (options.controllers || options.handlers || options.main || options.exported) {
     const commonEntryPoints = await analyzer.findCommonEntryPoints();
     entryPoints = [];
@@ -232,7 +269,7 @@ async function discoverCommand(options: any): Promise<void> {
   }
 }
 
-async function batchCommand(options: any): Promise<void> {
+async function batchCommand(options: BatchOptions): Promise<void> {
   logger.progress(`Loading batch configuration from: ${options.config}`);
 
   // Load configuration
@@ -250,12 +287,12 @@ async function batchCommand(options: any): Promise<void> {
   }
 
   // Create output directory
-  if (!fs.existsSync(options.outputDir)) {
-    fs.mkdirSync(options.outputDir, { recursive: true });
+  if (!fs.existsSync(options.outputDir!)) {
+    fs.mkdirSync(options.outputDir!, { recursive: true });
   }
 
   // Process entry points
-  const parallelCount = parseInt(options.parallel) || 1;
+  const parallelCount = parseInt(options.parallel?.toString() || '1') || 1;
   const entryPoints = config.entryPoints;
 
   logger.progress(`Processing ${entryPoints.length} entry points (parallel: ${parallelCount})`);
@@ -264,7 +301,7 @@ async function batchCommand(options: any): Promise<void> {
     const batch = entryPoints.slice(i, i + parallelCount);
 
     await Promise.all(
-      batch.map(async (entryPointConfig: any) => {
+      batch.map(async (entryPointConfig: BatchConfig['entry_points'][0]) => {
         try {
           const context = createProjectContext({
             projectRoot: config.projectRoot || '.',
@@ -273,7 +310,7 @@ async function batchCommand(options: any): Promise<void> {
 
           const analysisOptions = {
             ...config.analysisOptions,
-            maxDepth: entryPointConfig.maxDepth || config.maxDepth || 10,
+            maxDepth: entryPointConfig.options?.maxDepth || config.maxDepth || 10,
           };
 
           const analyzer = new CallGraphAnalyzer(context, analysisOptions);
@@ -289,14 +326,18 @@ async function batchCommand(options: any): Promise<void> {
           const callGraph = await analyzer.analyzeFromEntryPoint(entryPoint);
 
           const outputFile = path.join(
-            options.outputDir,
+            options.outputDir!,
             entryPointConfig.output || `${entryPointConfig.function}.json`
           );
-          const output = formatOutput(callGraph, entryPointConfig.format || 'json', {
-            includeMetadata: true,
-            includeMetrics: config.includeMetrics,
-            prettify: true,
-          });
+          const output = formatOutput(
+            callGraph,
+            (entryPointConfig.options?.format || 'json') as OutputFormat,
+            {
+              includeMetadata: true,
+              includeMetrics: config.includeMetrics,
+              prettify: true,
+            }
+          );
 
           await saveOutput(output, outputFile);
           logger.debug(` Completed: ${entryPoint} -> ${outputFile}`);
@@ -307,10 +348,10 @@ async function batchCommand(options: any): Promise<void> {
     );
   }
 
-  logger.success(`Batch analysis complete. Results in: ${options.outputDir}`);
+  logger.success(`Batch analysis complete. Results in: ${options.outputDir!}`);
 }
 
-async function validateCommand(options: any): Promise<void> {
+async function validateCommand(options: ValidateOptions): Promise<void> {
   const context = createProjectContext(options);
   const analyzer = new EntryPointAnalyzer(context);
   const suppressInCI = Boolean(
@@ -319,7 +360,7 @@ async function validateCommand(options: any): Promise<void> {
 
   logger.progress(`Validating entry point: ${options.entry}`);
 
-  const result = await analyzer.validateEntryPoint(options.entry);
+  const result = await analyzer.validateEntryPoint(options.entry!);
 
   if (result.isValid) {
     logger.success(' Entry point is valid');
@@ -339,7 +380,7 @@ async function validateCommand(options: any): Promise<void> {
   }
 }
 
-function createProjectContext(options: any): ProjectContext {
+function createProjectContext(options: BaseProjectOptions): ProjectContext {
   const projectRoot = path.resolve(options.projectRoot || '.');
   let tsConfigPath = options.tsconfig;
 
@@ -359,7 +400,7 @@ function createProjectContext(options: any): ProjectContext {
   };
 }
 
-function formatOutput(callGraph: any, format: OutputFormat, options: any): string {
+function formatOutput(callGraph: CallGraph, format: OutputFormat, options: FormatOptions): string {
   switch (format.toLowerCase()) {
     case 'json':
       return new JsonFormatter().format(callGraph, { format: 'json', ...options });
@@ -372,7 +413,7 @@ function formatOutput(callGraph: any, format: OutputFormat, options: any): strin
   }
 }
 
-function formatEntryPointsAsYaml(entryPoints: any[]): string {
+function formatEntryPointsAsYaml(entryPoints: object[]): string {
   return yaml.dump({ entryPoints }, { indent: 2 });
 }
 
@@ -385,7 +426,7 @@ async function saveOutput(content: string, filePath: string): Promise<void> {
   fs.writeFileSync(filePath, content, 'utf-8');
 }
 
-function handleError(error: any): void {
+function handleError(error: unknown): void {
   const suppressInCI = Boolean(
     process.env.CI && (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID)
   );
@@ -405,7 +446,7 @@ function handleError(error: any): void {
 /**
  * Load configuration from a file (YAML or JSON)
  */
-async function loadConfigFile(configPath: string): Promise<any> {
+async function loadConfigFile(configPath: string): Promise<object> {
   const absolutePath = path.resolve(configPath);
 
   if (!fs.existsSync(absolutePath)) {
@@ -421,9 +462,9 @@ async function loadConfigFile(configPath: string): Promise<any> {
 
   try {
     if (ext === '.yaml' || ext === '.yml') {
-      return yaml.load(content);
+      return yaml.load(content) as object;
     } else if (ext === '.json') {
-      return JSON.parse(content);
+      return JSON.parse(content) as object;
     } else {
       throw new CallGraphError(
         `Unsupported configuration format: ${ext}. Use .yaml, .yml, or .json`,

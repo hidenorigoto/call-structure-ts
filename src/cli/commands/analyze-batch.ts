@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { CallGraphError, OutputFormat, ProjectContext } from '../../types/CallGraph';
+import { CallGraphError, OutputFormat, ProjectContext, CallGraph } from '../../types/CallGraph';
+import { FormatOptions } from '../../types/Formatter';
 import { PerformanceOptimizer } from '../../performance/PerformanceOptimizer';
 import { logger } from '../../utils/logger';
 import { JsonFormatter } from '../../formatter/JsonFormatter';
@@ -45,7 +46,7 @@ interface AnalysisResult {
   outputFile: string;
   success: boolean;
   error?: Error;
-  callGraph?: any;
+  callGraph?: CallGraph;
   duration?: number;
 }
 
@@ -157,12 +158,12 @@ async function loadBatchConfig(configPath: string): Promise<BatchConfig> {
   const content = fs.readFileSync(configPath, 'utf-8');
   const ext = path.extname(configPath).toLowerCase();
 
-  let config: any;
+  let config: BatchConfig;
   try {
     if (ext === '.yaml' || ext === '.yml') {
-      config = yaml.load(content);
+      config = yaml.load(content) as BatchConfig;
     } else if (ext === '.json') {
-      config = JSON.parse(content);
+      config = JSON.parse(content) as BatchConfig;
     } else {
       throw new CallGraphError(
         `Unsupported configuration format: ${ext}. Use .yaml, .yml, or .json`,
@@ -192,7 +193,7 @@ async function loadBatchConfig(configPath: string): Promise<BatchConfig> {
   }
 
   // Validate each entry point
-  config.entry_points.forEach((ep: any, index: number) => {
+  config.entry_points.forEach((ep: BatchConfig['entry_points'][0], index: number) => {
     if (!ep.file || !ep.function) {
       throw new CallGraphError(
         `Invalid entry point at index ${index}: missing file or function`,
@@ -220,7 +221,7 @@ function formatEntryPoint(config: BatchConfig['entry_points'][0]): string {
 async function analyzeEntryPoint(
   entryPointConfig: BatchConfig['entry_points'][0],
   commonOptions?: BatchConfig['common_options']
-): Promise<any> {
+): Promise<CallGraph> {
   // Create project context
   const context: ProjectContext = {
     rootPath: path.resolve(commonOptions?.projectRoot || '.'),
@@ -231,7 +232,7 @@ async function analyzeEntryPoint(
   };
 
   // Merge analysis options
-  const analysisOptions: any = {
+  const analysisOptions: Record<string, unknown> = {
     maxDepth: entryPointConfig.options?.maxDepth || commonOptions?.max_depth || 10,
     includeNodeModules: false,
     skipCallbacks: false,
@@ -280,9 +281,10 @@ async function analyzeEntryPoint(
       enableCache: true,
       enableParallel: true,
       enableProgress: false, // Disable progress for batch operations
-      maxDepth: analysisOptions.maxDepth,
+      maxDepth: analysisOptions.maxDepth as number,
       includeExternal:
-        analysisOptions.includePatterns && analysisOptions.includePatterns.length > 0,
+        Array.isArray(analysisOptions.includePatterns) &&
+        analysisOptions.includePatterns.length > 0,
     }
   );
 
@@ -290,7 +292,7 @@ async function analyzeEntryPoint(
   return await optimizer.analyze(entryPoint);
 }
 
-function formatOutput(callGraph: any, format: OutputFormat, options: any): string {
+function formatOutput(callGraph: CallGraph, format: OutputFormat, options: FormatOptions): string {
   switch (format.toLowerCase()) {
     case 'json':
       return new JsonFormatter().format(callGraph, { format: 'json', ...options });
@@ -331,7 +333,7 @@ async function generateCombinedReport(results: AnalysisResult[], outputDir: stri
       error: r.error
         ? {
             message: r.error.message,
-            code: (r.error as any).code || 'UNKNOWN_ERROR',
+            code: (r.error as CallGraphError).code || 'UNKNOWN_ERROR',
           }
         : undefined,
       metrics:

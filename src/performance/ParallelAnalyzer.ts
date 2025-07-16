@@ -8,6 +8,12 @@ import { CallGraph, CallGraphNode, CallGraphEdge } from '../types/CallGraph';
 import { CacheManager } from './CacheManager';
 import { ProgressReporter } from './ProgressReporter';
 
+interface WorkerMessage {
+  type: 'error' | 'success';
+  error?: string;
+  data?: AnalysisResult;
+}
+
 export interface ParallelAnalyzerOptions {
   concurrency?: number;
   tsConfigPath: string;
@@ -110,18 +116,20 @@ export class ParallelAnalyzer extends EventEmitter {
     return new Promise((resolve, reject) => {
       const worker = this.getAvailableWorker();
 
-      const messageHandler = (result: any) => {
+      const messageHandler = (result: WorkerMessage): void => {
         worker.off('message', messageHandler);
         worker.off('error', errorHandler);
 
         if (result.type === 'error') {
           reject(new Error(result.error));
-        } else {
+        } else if (result.data) {
           resolve(result.data);
+        } else {
+          reject(new Error('Missing data in worker result'));
         }
       };
 
-      const errorHandler = (error: Error) => {
+      const errorHandler = (error: Error): void => {
         worker.off('message', messageHandler);
         worker.off('error', errorHandler);
         reject(error);

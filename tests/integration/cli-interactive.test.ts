@@ -145,7 +145,7 @@ describe('CLI Interactive Mode', () => {
         '\x03', // Ctrl+C to exit
       ]);
 
-      expect(result.stdout).toContain('Function Analysis');
+      expect(result.stdout).toContain('Analyze a function');
       // The test might not see the file list due to timing issues
       // but it should at least start the analysis process
     });

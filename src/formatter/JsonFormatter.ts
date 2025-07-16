@@ -1,12 +1,17 @@
 import { CallGraph } from '../types/CallGraph';
-import { Formatter, FormatOptions, ValidationResult, CircularReferenceStrategy } from '../types/Formatter';
+import {
+  Formatter,
+  FormatOptions,
+  ValidationResult,
+  CircularReferenceStrategy,
+} from '../types/Formatter';
 import { Writable } from 'stream';
 
 export class JsonFormatter implements Formatter {
   format(callGraph: CallGraph, options: FormatOptions = {}): string {
     // Handle circular references if needed
     const processedGraph = this.handleCircularReferences(callGraph, options);
-    
+
     const output: Record<string, unknown> = {};
 
     // Always include metadata
@@ -335,53 +340,68 @@ export class JsonFormatter implements Formatter {
       // Stream nodes array
       const comma1 = isFirst ? '' : ',';
       stream.write(`${comma1}${newline}${indentStr}"nodes": [${newline}`);
-      
+
       for (let i = 0; i < processedGraph.nodes.length; i += chunkSize) {
         const chunk = processedGraph.nodes.slice(i, i + chunkSize);
-        
+
         for (let j = 0; j < chunk.length; j++) {
           const globalIndex = i + j;
           if (globalIndex > 0) stream.write(',' + newline);
-          
+
           const nodeJson = JSON.stringify(chunk[j], null, prettify ? indent : undefined);
-          const indentedJson = prettify ? nodeJson.split('\n').map((line, idx) => 
-            idx === 0 ? indentStr + line : ' '.repeat(indent * 2) + line
-          ).join('\n') : nodeJson;
-          
+          const indentedJson = prettify
+            ? nodeJson
+                .split('\n')
+                .map((line, idx) => (idx === 0 ? indentStr + line : ' '.repeat(indent * 2) + line))
+                .join('\n')
+            : nodeJson;
+
           stream.write(indentedJson);
         }
       }
-      
+
       stream.write(newline + indentStr + '],' + newline);
 
       // Stream edges array
       stream.write(`${indentStr}"edges": [${newline}`);
-      
+
       for (let i = 0; i < processedGraph.edges.length; i += chunkSize) {
         const chunk = processedGraph.edges.slice(i, i + chunkSize);
-        
+
         for (let j = 0; j < chunk.length; j++) {
           const globalIndex = i + j;
           if (globalIndex > 0) stream.write(',' + newline);
-          
+
           const edgeJson = JSON.stringify(chunk[j], null, prettify ? indent : undefined);
-          const indentedJson = prettify ? edgeJson.split('\n').map((line, idx) => 
-            idx === 0 ? indentStr + line : ' '.repeat(indent * 2) + line
-          ).join('\n') : edgeJson;
-          
+          const indentedJson = prettify
+            ? edgeJson
+                .split('\n')
+                .map((line, idx) => (idx === 0 ? indentStr + line : ' '.repeat(indent * 2) + line))
+                .join('\n')
+            : edgeJson;
+
           stream.write(indentedJson);
         }
       }
-      
+
       stream.write(newline + indentStr + ']');
 
       // Write statistics if requested
       if (options.includeMetrics) {
         stream.write(',' + newline);
-        const statisticsJson = JSON.stringify(this.generateStatistics(processedGraph), null, prettify ? indent : undefined);
-        const indentedStats = prettify ? statisticsJson.split('\n').map((line, idx) => 
-          idx === 0 ? indentStr + '"statistics": ' + line : ' '.repeat(indent * 2) + line
-        ).join('\n') : `${indentStr}"statistics": ${statisticsJson}`;
+        const statisticsJson = JSON.stringify(
+          this.generateStatistics(processedGraph),
+          null,
+          prettify ? indent : undefined
+        );
+        const indentedStats = prettify
+          ? statisticsJson
+              .split('\n')
+              .map((line, idx) =>
+                idx === 0 ? indentStr + '"statistics": ' + line : ' '.repeat(indent * 2) + line
+              )
+              .join('\n')
+          : `${indentStr}"statistics": ${statisticsJson}`;
         stream.write(indentedStats);
       }
 
@@ -398,12 +418,12 @@ export class JsonFormatter implements Formatter {
    */
   private handleCircularReferences(callGraph: CallGraph, options: FormatOptions): CallGraph {
     const strategy = options.circularReferenceStrategy || CircularReferenceStrategy.REFERENCE;
-    
+
     // Skip circular reference processing for extremely large graphs
     if (callGraph.nodes.length > 50000) {
       return callGraph;
     }
-    
+
     if (strategy === CircularReferenceStrategy.OMIT) {
       return this.omitCircularReferences(callGraph);
     } else if (strategy === CircularReferenceStrategy.REFERENCE) {
@@ -435,7 +455,7 @@ export class JsonFormatter implements Formatter {
 
     return {
       ...callGraph,
-      edges: callGraph.edges.filter(edge => !cyclicEdgeIds.has(edge.id))
+      edges: callGraph.edges.filter(edge => !cyclicEdgeIds.has(edge.id)),
     };
   }
 
@@ -451,20 +471,20 @@ export class JsonFormatter implements Formatter {
         const source = cycle[i];
         const target = cycle[i + 1];
         const edgeIndex = processedEdges.findIndex(e => e.source === source && e.target === target);
-        
+
         if (edgeIndex >= 0) {
           processedEdges[edgeIndex] = {
             ...processedEdges[edgeIndex],
             circular: true,
-            targetRef: target // Reference instead of full target
-          } as any;
+            targetRef: target, // Reference instead of full target
+          } as (typeof processedEdges)[number];
         }
       }
     });
 
     return {
       ...callGraph,
-      edges: processedEdges
+      edges: processedEdges,
     };
   }
 
@@ -476,13 +496,13 @@ export class JsonFormatter implements Formatter {
     // but we could add metadata about which nodes are inlined
     const processed = this.replaceCircularWithReferences(callGraph);
     const cycles = this.detectCycles(callGraph);
-    
+
     return {
       ...processed,
       metadata: {
         ...processed.metadata,
-        circularReferences: cycles.map(cycle => ({ cycle, strategy: 'inline-once' }))
-      } as any
+        circularReferences: cycles.map(cycle => ({ cycle, strategy: 'inline-once' })),
+      } as typeof processed.metadata,
     };
   }
 
@@ -493,7 +513,7 @@ export class JsonFormatter implements Formatter {
     const { nodes, edges } = callGraph;
     const adjacencyList = new Map<string, string[]>();
     const cycles: string[][] = [];
-    
+
     // Build adjacency list
     nodes.forEach(node => adjacencyList.set(node.id, []));
     edges.forEach(edge => {
@@ -507,7 +527,7 @@ export class JsonFormatter implements Formatter {
       const visited = new Set<string>();
       const stack = new Set<string>();
       const path: string[] = [];
-      
+
       const dfs = (nodeId: string): void => {
         if (stack.has(nodeId)) {
           // Found a cycle
@@ -517,24 +537,24 @@ export class JsonFormatter implements Formatter {
           }
           return;
         }
-        
+
         if (visited.has(nodeId)) {
           return;
         }
-        
+
         visited.add(nodeId);
         stack.add(nodeId);
         path.push(nodeId);
-        
+
         const neighbors = adjacencyList.get(nodeId) || [];
         for (const neighbor of neighbors) {
           dfs(neighbor);
         }
-        
+
         path.pop();
         stack.delete(nodeId);
       };
-      
+
       nodes.forEach(node => {
         if (!visited.has(node.id)) {
           dfs(node.id);
@@ -543,7 +563,7 @@ export class JsonFormatter implements Formatter {
     } else {
       // For large graphs, use a simpler detection that just finds basic cycles
       const visited = new Set<string>();
-      
+
       edges.forEach(edge => {
         // Simple back-edge detection
         if (edge.source === edge.target) {
@@ -569,7 +589,7 @@ export class JsonFormatter implements Formatter {
   private writeProperty(
     stream: Writable,
     key: string,
-    value: any,
+    value: unknown,
     indent: number,
     isFirst: boolean,
     skipValue = false

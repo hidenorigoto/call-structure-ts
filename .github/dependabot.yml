@@ -1,0 +1,88 @@
+version: 2
+updates:
+  # Enable version updates for npm
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '06:00'
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    target-branch: 'main'
+    labels:
+      - 'dependencies'
+      - 'automated'
+    reviewers:
+      - 'hidenorigoto'
+    commit-message:
+      prefix: 'chore'
+      include: 'scope'
+    groups:
+      # Group TypeScript-related updates
+      typescript:
+        patterns:
+          - 'typescript'
+          - '@types/*'
+          - 'ts-*'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+      # Group testing dependencies
+      testing:
+        patterns:
+          - 'jest'
+          - '@types/jest'
+          - 'ts-jest'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+      # Group linting and formatting
+      linting:
+        patterns:
+          - 'eslint'
+          - '@typescript-eslint/*'
+          - 'prettier'
+          - 'lint-staged'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+      # Group build and development tools
+      build-tools:
+        patterns:
+          - 'husky'
+          - '@commitlint/*'
+          - 'commitlint'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '06:00'
+    open-pull-requests-limit: 5
+    target-branch: 'main'
+    labels:
+      - 'github-actions'
+      - 'dependencies'
+      - 'automated'
+    reviewers:
+      - 'hidenorigoto'
+    commit-message:
+      prefix: 'ci'
+      include: 'scope'
+    groups:
+      # Group all GitHub Actions updates
+      github-actions:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'

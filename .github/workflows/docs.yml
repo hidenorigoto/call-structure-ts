@@ -1,0 +1,217 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'src/**/*.ts'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
+
+jobs:
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Create documentation site
+        run: |
+          # Create docs directory structure
+          mkdir -p docs-site
+          mkdir -p docs-site/api
+          mkdir -p docs-site/examples
+
+          # Copy main documentation files
+          cp README.md docs-site/
+          cp CONTRIBUTING.md docs-site/
+          cp -r docs/* docs-site/
+
+          # Copy examples
+          cp -r examples/* docs-site/examples/
+
+          # Create index.html
+          cat > docs-site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Call Structure TS Documentation</title>
+              <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown-light.min.css">
+              <style>
+                  .markdown-body {
+                      box-sizing: border-box;
+                      min-width: 200px;
+                      max-width: 980px;
+                      margin: 0 auto;
+                      padding: 45px;
+                  }
+                  .nav {
+                      background: #f6f8fa;
+                      padding: 20px;
+                      margin-bottom: 20px;
+                      border-radius: 6px;
+                  }
+                  .nav a {
+                      margin-right: 20px;
+                      text-decoration: none;
+                      color: #0969da;
+                  }
+                  .nav a:hover {
+                      text-decoration: underline;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="markdown-body">
+                  <div class="nav">
+                      <a href="README.html">Getting Started</a>
+                      <a href="CONTRIBUTING.html">Contributing</a>
+                      <a href="TROUBLESHOOTING.html">Troubleshooting</a>
+                      <a href="examples/">Examples</a>
+                      <a href="https://github.com/hidenorigoto/call-structure-ts">GitHub</a>
+                  </div>
+                  
+                  <h1>Call Structure TS Documentation</h1>
+                  
+                  <p>Welcome to the Call Structure TS documentation. This tool helps you analyze and visualize TypeScript code structure and function call relationships.</p>
+                  
+                  <h2>Quick Links</h2>
+                  <ul>
+                      <li><a href="README.html">📚 Getting Started Guide</a></li>
+                      <li><a href="CONTRIBUTING.html">🤝 Contributing Guide</a></li>
+                      <li><a href="TROUBLESHOOTING.html">🔧 Troubleshooting</a></li>
+                      <li><a href="ARCHITECTURE.html">🏗️ Architecture</a></li>
+                      <li><a href="performance.html">⚡ Performance Guide</a></li>
+                      <li><a href="examples/">📋 Examples</a></li>
+                  </ul>
+                  
+                  <h2>Features</h2>
+                  <ul>
+                      <li>🔍 Static analysis of TypeScript codebases</li>
+                      <li>📊 Multiple output formats (JSON, YAML, Mermaid)</li>
+                      <li>✅ Structure validation against specifications</li>
+                      <li>⚡ Performance optimized for large codebases</li>
+                      <li>🔄 Interactive mode for guided analysis</li>
+                      <li>📦 Batch processing support</li>
+                  </ul>
+                  
+                  <h2>Installation</h2>
+                  <pre><code>npm install -g call-structure-ts</code></pre>
+                  
+                  <h2>Quick Start</h2>
+                  <pre><code># Analyze a function
+          call-structure analyze --entry "src/main.ts#bootstrap"
+
+          # Generate a Mermaid diagram
+          call-structure analyze --entry "src/api.ts#handler" --format mermaid
+
+          # Interactive mode
+          call-structure interactive</code></pre>
+              </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Convert markdown to HTML
+        run: |
+          # Install markdown converter
+          npm install -g marked
+
+          # Convert markdown files to HTML
+          for file in docs-site/*.md; do
+            if [ -f "$file" ]; then
+              base=$(basename "$file" .md)
+              echo "Converting $file to HTML..."
+              marked "$file" > "docs-site/${base}.html"
+            fi
+          done
+
+          # Create examples index
+          cat > docs-site/examples/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Examples - Call Structure TS</title>
+              <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown-light.min.css">
+              <style>
+                  .markdown-body {
+                      box-sizing: border-box;
+                      min-width: 200px;
+                      max-width: 980px;
+                      margin: 0 auto;
+                      padding: 45px;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="markdown-body">
+                  <h1>Examples</h1>
+                  <p>Here are some example projects that demonstrate how to use Call Structure TS:</p>
+                  
+                  <h2>Available Examples</h2>
+                  <ul>
+                      <li><a href="simple-project/">Simple Project</a> - Basic usage example</li>
+                      <li><a href="async-patterns/">Async Patterns</a> - Analyzing async/await patterns</li>
+                  </ul>
+                  
+                  <p><a href="../index.html">← Back to Documentation</a></p>
+              </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs-site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build-docs
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Notify deployment
+        run: |
+          echo "📚 Documentation deployed successfully!"
+          echo "🔗 URL: ${{ steps.deployment.outputs.page_url }}"

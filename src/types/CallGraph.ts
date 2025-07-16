@@ -43,6 +43,15 @@ export interface CallGraphMetadata {
   tsConfigPath?: string | undefined;
   totalFiles: number;
   analysisTimeMs: number;
+  performance?: {
+    analysisTime: number;
+    totalNodes: number;
+    totalEdges: number;
+    memoryUsage: number;
+    filesAnalyzed: number;
+    nodesPerSecond: number;
+    averageDepth: number;
+  };
 }
 
 export interface CallGraph {

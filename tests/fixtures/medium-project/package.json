@@ -1,0 +1,9 @@
+{
+  "name": "medium-test-project",
+  "version": "1.0.0",
+  "description": "Medium test project for performance benchmarks",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  }
+}

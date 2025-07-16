@@ -6,11 +6,7 @@ import { EntryPointAnalyzer } from '../analyzer/EntryPointAnalyzer';
 import { JsonFormatter } from '../formatter/JsonFormatter';
 import { YamlFormatter } from '../formatter/YamlFormatter';
 import { MermaidFormatter } from '../formatter/MermaidFormatter';
-import {
-  OutputFormat,
-  ProjectContext,
-  CallGraphError,
-} from '../types/CallGraph';
+import { OutputFormat, ProjectContext, CallGraphError } from '../types/CallGraph';
 import { logger, LogLevel } from '../utils/logger';
 import { analyzeCommand } from './commands/analyze';
 import { testCommand } from './commands/test';
@@ -41,7 +37,7 @@ program
     } else if (opts.quiet) {
       logger.setLevel(LogLevel.ERROR);
     }
-    
+
     // Handle progress option
     if (opts.progress === false) {
       logger.setProgressEnabled(false);
@@ -141,7 +137,7 @@ program
         config: options.config,
         outputDir: options.outputDir,
         parallel: options.parallel || 4,
-        continueOnError: options.continueOnError || false
+        continueOnError: options.continueOnError || false,
       });
     } catch (error) {
       handleError(error);
@@ -196,7 +192,6 @@ program
       handleError(error);
     }
   });
-
 
 async function discoverCommand(options: any): Promise<void> {
   logger.progress('Discovering entry points...');
@@ -318,6 +313,9 @@ async function batchCommand(options: any): Promise<void> {
 async function validateCommand(options: any): Promise<void> {
   const context = createProjectContext(options);
   const analyzer = new EntryPointAnalyzer(context);
+  const suppressInCI = Boolean(
+    process.env.CI && (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID)
+  );
 
   logger.progress(`Validating entry point: ${options.entry}`);
 
@@ -325,7 +323,7 @@ async function validateCommand(options: any): Promise<void> {
 
   if (result.isValid) {
     logger.success(' Entry point is valid');
-    if (result.location) {
+    if (result.location && !suppressInCI) {
       console.log(`  File: ${result.location.filePath}`);
       console.log(`  Function: ${result.location.functionName}`);
       if (result.location.className) {
@@ -334,13 +332,12 @@ async function validateCommand(options: any): Promise<void> {
     }
   } else {
     logger.error(' Entry point is invalid');
-    if (result.error) {
+    if (result.error && !suppressInCI) {
       console.log(`  Error: ${result.error}`);
     }
     process.exit(1);
   }
 }
-
 
 function createProjectContext(options: any): ProjectContext {
   const projectRoot = path.resolve(options.projectRoot || '.');
@@ -361,7 +358,6 @@ function createProjectContext(options: any): ProjectContext {
     excludePatterns: ['node_modules/**', '**/*.test.ts', '**/*.spec.ts'],
   };
 }
-
 
 function formatOutput(callGraph: any, format: OutputFormat, options: any): string {
   switch (format.toLowerCase()) {
@@ -390,9 +386,13 @@ async function saveOutput(content: string, filePath: string): Promise<void> {
 }
 
 function handleError(error: any): void {
+  const suppressInCI = Boolean(
+    process.env.CI && (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID)
+  );
+
   if (error instanceof CallGraphError) {
     logger.error(`${error.code}: ${error.message}`);
-    if (error.file) {
+    if (error.file && !suppressInCI) {
       console.log(`  File: ${error.file}${error.line ? `:${error.line}` : ''}`);
     }
   } else {
@@ -407,7 +407,7 @@ function handleError(error: any): void {
  */
 async function loadConfigFile(configPath: string): Promise<any> {
   const absolutePath = path.resolve(configPath);
-  
+
   if (!fs.existsSync(absolutePath)) {
     throw new CallGraphError(
       `Configuration file not found: ${configPath}`,
@@ -415,10 +415,10 @@ async function loadConfigFile(configPath: string): Promise<any> {
       configPath
     );
   }
-  
+
   const content = fs.readFileSync(absolutePath, 'utf-8');
   const ext = path.extname(absolutePath).toLowerCase();
-  
+
   try {
     if (ext === '.yaml' || ext === '.yml') {
       return yaml.load(content);

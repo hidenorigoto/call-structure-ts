@@ -1,0 +1,9 @@
+{
+  "name": "large-test-project",
+  "version": "1.0.0",
+  "description": "Large test project for performance benchmarks",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  }
+}

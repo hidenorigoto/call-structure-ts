@@ -31,7 +31,7 @@ interface QueueTask {
 }
 
 export class ParallelAnalyzer extends EventEmitter {
-  private queue: fastq.QueueAsPromised<QueueTask>;
+  private queue: fastq.queueAsPromised<QueueTask>;
   private workers: Worker[] = [];
   private tsConfigPath: string;
   private cacheManager?: CacheManager;

@@ -1,0 +1,9 @@
+{
+  "name": "small-test-project",
+  "version": "1.0.0",
+  "description": "Small test project for performance benchmarks",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  }
+}

@@ -46,7 +46,7 @@
     "inquirer-autocomplete-prompt": "^3.0.1",
     "js-yaml": "^4.1.0",
     "ora": "^8.2.0",
-    "ts-morph": "^21.0.1"
+    "ts-morph": "^26.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",

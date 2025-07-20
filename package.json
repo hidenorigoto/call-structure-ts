@@ -72,7 +72,7 @@
     "node": ">=22.0.0"
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
+    "!(examples)/**/*.{ts,tsx}": [
       "eslint --fix",
       "prettier --write"
     ],

@@ -352,6 +352,42 @@ const analyzer = new CallGraphAnalyzer(context, {
 const graph = await analyzer.analyzeFromEntryPoint('src/app.ts#main');
 ```
 
+## 📁 Example Projects
+
+The `examples/` directory contains comprehensive examples demonstrating various use cases:
+
+### [Simple Project](examples/simple-project/)
+
+Basic TypeScript project demonstrating fundamental analysis features.
+
+### [Async Patterns](examples/async-patterns/)
+
+Examples of analyzing asynchronous code patterns including Promises and async/await.
+
+### [Circular Dependencies](examples/circular-deps/)
+
+Demonstrates circular dependency detection and resolution strategies.
+
+### [Domain-Driven Design](examples/ddd-example/)
+
+Complete DDD architecture example with layers, aggregates, and use cases.
+
+### [Express.js API](examples/express-api/)
+
+REST API with authentication, middleware, and service layers.
+
+### [React Application](examples/react-app/)
+
+Modern React app with hooks, state management (Zustand), and React Query.
+
+### [NestJS Application](examples/nestjs-app/)
+
+Enterprise NestJS application with decorators, dependency injection, and modules.
+
+### [Performance Optimization](examples/performance-optimization/)
+
+Advanced techniques for analyzing large codebases with caching and parallel processing.
+
 ## 🎯 Use Cases
 
 ### 1. Express.js Application Analysis
@@ -620,6 +656,14 @@ call-structure-ts/
 │   └── fixtures/        # Test fixtures
 ├── docs/               # Documentation
 ├── examples/           # Example projects
+│   ├── simple-project/          # Basic TypeScript project
+│   ├── async-patterns/          # Async/await patterns
+│   ├── circular-deps/           # Circular dependency detection
+│   ├── ddd-example/            # Domain-Driven Design architecture
+│   ├── express-api/            # Express.js REST API
+│   ├── react-app/              # React application with hooks
+│   ├── nestjs-app/             # NestJS enterprise application
+│   └── performance-optimization/ # Performance optimization techniques
 └── benchmarks/         # Performance benchmarks
 ```
 

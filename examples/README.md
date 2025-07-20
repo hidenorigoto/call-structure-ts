@@ -1,133 +1,239 @@
 # Call Structure TS Examples
 
-This directory contains example TypeScript projects for testing and demonstration of the call-structure-ts analyzer.
+This directory contains example projects demonstrating various use cases and features of call-structure-ts.
 
-## Projects
+## 📚 Example Projects
 
-### simple-project
+### 1. [Simple Project](./simple-project/)
 
-Basic TypeScript project with classes, methods, and various call patterns.
+**Purpose**: Basic TypeScript project demonstrating fundamental analysis features
 
-**Structure:**
+**Key Features**:
+
+- Function call tracking
+- Import/export analysis
+- Basic project structure
+- Simple test cases
+
+**Quick Start**:
+
+```bash
+cd simple-project
+call-structure analyze --entry src/main.ts#main
 ```
-simple-project/
-├── src/
-│   ├── index.ts           # Main entry point
-│   ├── services/
-│   │   ├── UserService.ts      # Main service with async/sync calls
-│   │   └── ValidationService.ts # Validation logic
-│   └── utils/
-│       └── logger.ts           # Logging utility
-├── tsconfig.json
-└── package.json
+
+### 2. [Async Patterns](./async-patterns/)
+
+**Purpose**: Analyzing asynchronous code patterns
+
+**Key Features**:
+
+- Promise chains
+- Async/await functions
+- Concurrent operations
+- Error handling in async code
+
+**Quick Start**:
+
+```bash
+cd async-patterns
+call-structure analyze --entry src/async-operations.ts#processDataAsync
 ```
 
-**Demonstrates:**
-- Class instantiation and method calls
-- Sync and async method calls
-- Service dependencies
-- Callback patterns
-- Logger integration
+### 3. [Circular Dependencies](./circular-deps/)
 
-### async-patterns
+**Purpose**: Detecting and analyzing circular dependencies
 
-Demonstrates async/await, Promise chains, and parallel processing patterns.
+**Key Features**:
 
-**Files:**
-- `AsyncPatterns.ts` - Complex async flow examples
-- `tsconfig.json` - TypeScript configuration
-
-**Demonstrates:**
-- `Promise.all()` for parallel execution
-- Sequential async processing with `await`
-- `Promise.race()` for timeouts
-- Recursive async calls
-- Mixed async/sync patterns
-
-### circular-deps
-
-Example with circular dependencies to test edge case handling.
-
-**Files:**
-- `ServiceA.ts` - Service that depends on ServiceB
-- `ServiceB.ts` - Service that depends on ServiceA (circular!)
-- `tsconfig.json` - TypeScript configuration
-
-**Demonstrates:**
 - Circular dependency detection
-- Cross-service method calls
-- Import cycle analysis
+- Dependency visualization
+- Resolution strategies
+- Anti-pattern examples
 
-## Running Analysis
-
-### Analyze Simple Project
-
-```bash
-# Analyze UserService.createUser method
-call-structure analyze --entry "examples/simple-project/src/services/UserService.ts#UserService.createUser"
-
-# Analyze the main entry point
-call-structure analyze --entry "examples/simple-project/src/index.ts#main"
-```
-
-### Analyze Async Patterns
+**Quick Start**:
 
 ```bash
-# Analyze complex async flow
-call-structure analyze --entry "examples/async-patterns/AsyncPatterns.ts#complexAsyncFlow"
-
-# Analyze mixed async patterns
-call-structure analyze --entry "examples/async-patterns/AsyncPatterns.ts#mixedAsyncPatterns"
+cd circular-deps
+call-structure analyze --entry src/moduleA.ts#functionA --format mermaid
 ```
 
-### Analyze Circular Dependencies
+### 4. [Domain-Driven Design (DDD)](./ddd-example/)
+
+**Purpose**: Complete DDD architecture example
+
+**Key Features**:
+
+- Clean architecture layers
+- Domain aggregates and entities
+- Use cases and repositories
+- Architecture validation rules
+
+**Quick Start**:
 
 ```bash
-# Analyze ServiceA (will detect circular dependency)
-call-structure analyze --entry "examples/circular-deps/ServiceA.ts#ServiceA.methodA"
-
-# Analyze ServiceB (will show the cycle)
-call-structure analyze --entry "examples/circular-deps/ServiceB.ts#ServiceB.methodB"
+cd ddd-example
+call-structure analyze --entry src/main.ts#main
+call-structure test --spec architecture-rules.yaml
 ```
 
-## Compilation
+### 5. [Express.js API](./express-api/)
 
-Each example project can be compiled independently:
+**Purpose**: REST API with authentication and middleware
+
+**Key Features**:
+
+- Express middleware pipeline
+- JWT authentication
+- Service layer architecture
+- Error handling patterns
+
+**Quick Start**:
 
 ```bash
-# Compile simple-project
-cd examples/simple-project
-npx tsc
-
-# Compile async-patterns
-cd examples/async-patterns
-npx tsc
-
-# Compile circular-deps
-cd examples/circular-deps
-npx tsc
+cd express-api
+call-structure analyze --entry src/server.ts#createApp
+call-structure test --spec test-spec.yaml
 ```
 
-## Expected Outputs
+### 6. [React Application](./react-app/)
 
-### Simple Project Call Graph
-- Entry: `UserService.createUser`
-- Shows: logger calls, validation service usage, async database operations, callback patterns
+**Purpose**: Modern React app with state management
 
-### Async Patterns Call Graph
-- Entry: `complexAsyncFlow`
-- Shows: Promise chains, parallel processing, data flow through async functions
+**Key Features**:
 
-### Circular Dependencies Call Graph
-- Entry: `ServiceA.methodA` or `ServiceB.methodB`
-- Shows: circular dependency detection, infinite recursion prevention
+- React hooks and contexts
+- Zustand state management
+- React Query integration
+- Component architecture
 
-## Usage in Tests
+**Quick Start**:
 
-These examples serve as:
-- Integration test fixtures
-- Performance benchmarks
-- Feature demonstration
-- Edge case validation
+```bash
+cd react-app
+call-structure analyze --entry src/App.tsx#App
+call-structure test --spec component-patterns.yaml
+```
 
-Run the analyzer against these examples to verify correct call graph generation and analysis.
+### 7. [NestJS Application](./nestjs-app/)
+
+**Purpose**: Enterprise NestJS application
+
+**Key Features**:
+
+- Decorator-based architecture
+- Dependency injection
+- Module system
+- Guards and interceptors
+
+**Quick Start**:
+
+```bash
+cd nestjs-app
+call-structure analyze --entry src/main.ts#bootstrap
+call-structure test --spec nest-architecture.yaml
+```
+
+### 8. [Performance Optimization](./performance-optimization/)
+
+**Purpose**: Techniques for analyzing large codebases
+
+**Key Features**:
+
+- Caching strategies
+- Parallel processing
+- Memory management
+- Batch analysis
+
+**Quick Start**:
+
+```bash
+cd performance-optimization
+npm run profile
+call-structure batch --config performance-config.yaml
+```
+
+## 🚀 Getting Started
+
+1. **Navigate to an example**:
+
+   ```bash
+   cd examples/[example-name]
+   ```
+
+2. **Install dependencies** (if needed):
+
+   ```bash
+   npm install
+   ```
+
+3. **Run basic analysis**:
+
+   ```bash
+   call-structure analyze --entry [entry-point]
+   ```
+
+4. **Run architecture tests** (if available):
+   ```bash
+   call-structure test --spec [spec-file].yaml
+   ```
+
+## 📊 Common Analysis Commands
+
+### Visualize Call Graph
+
+```bash
+call-structure analyze --entry src/main.ts#main --format mermaid --output graph.mmd
+```
+
+### Deep Analysis
+
+```bash
+call-structure analyze --entry src/index.ts#bootstrap --depth 15 --include-async
+```
+
+### Batch Analysis
+
+```bash
+call-structure batch --config analysis-config.yaml --parallel
+```
+
+### Architecture Validation
+
+```bash
+call-structure test --spec architecture-rules.yaml --verbose
+```
+
+## 🔍 Analysis Tips
+
+1. **Start with entry points**: Use `call-structure discover` to find main functions
+2. **Use appropriate depth**: Start with `--depth 5` and increase as needed
+3. **Filter noise**: Use `--exclude` patterns to skip test files
+4. **Enable caching**: Use `--cache` for repeated analyses
+5. **Visualize first**: Use Mermaid format to understand the structure
+
+## 📝 Creating Your Own Examples
+
+To add a new example:
+
+1. Create a new directory under `examples/`
+2. Add a TypeScript project with `tsconfig.json`
+3. Include a README.md explaining the example
+4. Add architecture test specifications (optional)
+5. Include analysis configuration files
+
+## 🤝 Contributing
+
+We welcome new examples! Please ensure your example:
+
+- Demonstrates a specific use case or pattern
+- Includes clear documentation
+- Has working analysis commands
+- Follows the existing structure
+
+## 📚 Resources
+
+- [Main Documentation](../README.md)
+- [Architecture Patterns](../docs/ARCHITECTURE.md)
+- [Performance Guide](../docs/performance.md)
+- [Testing Guide](../docs/testing.md)

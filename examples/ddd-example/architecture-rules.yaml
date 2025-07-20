@@ -1,0 +1,168 @@
+# Architecture Rules for DDD Example
+# These rules enforce Domain-Driven Design principles
+
+name: DDD Architecture Rules
+description: Enforce clean architecture and DDD patterns
+
+rules:
+  # Layer Dependencies
+  - name: Domain Layer Independence
+    description: Domain layer should not depend on any other layers
+    type: forbidden_dependency
+    from: 
+      path: "src/domain/**"
+    to:
+      path: "src/application/**|src/infrastructure/**|src/presentation/**"
+    severity: error
+    message: "Domain layer must not depend on application, infrastructure, or presentation layers"
+
+  - name: Application Layer Dependencies
+    description: Application layer can only depend on domain layer
+    type: forbidden_dependency
+    from:
+      path: "src/application/**"
+    to:
+      path: "src/infrastructure/**|src/presentation/**"
+    severity: error
+    message: "Application layer must not depend on infrastructure or presentation layers"
+
+  - name: Presentation Layer Dependencies
+    description: Presentation layer should not depend on infrastructure
+    type: forbidden_dependency
+    from:
+      path: "src/presentation/**"
+    to:
+      path: "src/infrastructure/**"
+    severity: error
+    message: "Presentation layer must not directly depend on infrastructure layer"
+
+  # Domain Rules
+  - name: Entities Must Not Use External Libraries
+    description: Domain entities should be pure business logic
+    type: forbidden_import
+    in:
+      path: "src/domain/entities/**"
+    imports:
+      - "express"
+      - "axios"
+      - "typeorm"
+      - "@nestjs/*"
+    severity: error
+    message: "Domain entities must not import external libraries"
+
+  - name: Repository Interfaces in Domain
+    description: Repository interfaces must be in domain layer
+    type: required_location
+    files:
+      pattern: "**/I*Repository.ts"
+    must_be_in:
+      path: "src/domain/repositories"
+    severity: error
+    message: "Repository interfaces must be located in domain/repositories"
+
+  - name: Repository Implementations in Infrastructure
+    description: Repository implementations must be in infrastructure layer
+    type: required_location
+    files:
+      pattern: "**/repositories/*Repository.ts"
+      exclude: "**/I*Repository.ts"
+    must_be_in:
+      path: "src/infrastructure/repositories"
+    severity: error
+    message: "Repository implementations must be located in infrastructure/repositories"
+
+  # Use Case Rules
+  - name: Use Cases Must Be Independent
+    description: Use cases should not depend on each other
+    type: forbidden_dependency
+    from:
+      path: "src/application/use-cases/**"
+    to:
+      path: "src/application/use-cases/**"
+    severity: warning
+    message: "Use cases should not depend on other use cases"
+
+  - name: Controllers Must Use Use Cases
+    description: Controllers should delegate business logic to use cases
+    type: required_dependency
+    from:
+      path: "src/presentation/controllers/**"
+    must_call:
+      path: "src/application/use-cases/**"
+    severity: warning
+    message: "Controllers should call use cases for business logic"
+
+  # Aggregate Rules
+  - name: Aggregates Control Access
+    description: Aggregates should be the only way to modify entities
+    type: access_control
+    entities:
+      path: "src/domain/entities/**"
+    only_accessible_through:
+      path: "src/domain/aggregates/**"
+    except:
+      - "src/domain/entities/*.test.ts"
+    severity: warning
+    message: "Entities should only be modified through their aggregates"
+
+  # Value Object Rules
+  - name: Value Objects Are Immutable
+    description: Value objects must not have setters
+    type: forbidden_pattern
+    in:
+      path: "src/domain/value-objects/**"
+    pattern: "set[A-Z]\\w*\\s*\\("
+    severity: error
+    message: "Value objects must be immutable - no setter methods allowed"
+
+# Test Specifications
+test_specs:
+  - name: CreateOrder Flow
+    entry_point:
+      file: "src/presentation/controllers/OrderController.ts"
+      function: "OrderController.createOrder"
+    expected_flow:
+      - "OrderController.createOrder"
+      - "CreateOrderUseCase.execute"
+      - "OrderService.createOrder"
+      - "CustomerRepository.findById"
+      - "ProductRepository.findById"
+      - "InventoryService.checkAvailability"
+      - "PricingService.calculatePrice"
+      - "OrderRepository.save"
+      - "NotificationService.notifyOrderCreated"
+
+  - name: Domain Service Independence
+    entry_point:
+      file: "src/domain/services/PricingService.ts"
+      function: "PricingService.calculatePrice"
+    forbidden_calls:
+      - pattern: "infrastructure/**"
+        reason: "Domain services must not depend on infrastructure"
+      - pattern: "presentation/**"
+        reason: "Domain services must not depend on presentation"
+
+# Metrics
+metrics:
+  - name: Layer Coupling
+    description: Measure coupling between layers
+    type: coupling_analysis
+    layers:
+      - name: domain
+        path: "src/domain/**"
+      - name: application
+        path: "src/application/**"
+      - name: infrastructure
+        path: "src/infrastructure/**"
+      - name: presentation
+        path: "src/presentation/**"
+    threshold:
+      max_coupling: 0.3
+
+  - name: Aggregate Cohesion
+    description: Ensure aggregates are cohesive
+    type: cohesion_analysis
+    modules:
+      path: "src/domain/aggregates/**"
+    threshold:
+      min_cohesion: 0.7

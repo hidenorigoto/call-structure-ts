@@ -1,0 +1,177 @@
+# Performance optimization configuration for call-structure-ts
+
+name: Large Codebase Analysis
+description: Configuration for analyzing large codebases with performance optimizations
+
+# Analysis settings
+analysis:
+  # Maximum depth for call tree traversal
+  max_depth: 10
+  
+  # Include async calls in analysis
+  include_async: true
+  
+  # Include external library calls
+  include_external: false
+  
+  # File patterns to analyze
+  patterns:
+    - "src/**/*.ts"
+    - "!src/**/*.test.ts"
+    - "!src/**/*.spec.ts"
+
+# Caching configuration
+cache:
+  # Enable caching for analysis results
+  enabled: true
+  
+  # Cache directory
+  directory: ".call-structure-cache"
+  
+  # Cache TTL in seconds
+  ttl: 3600
+  
+  # Maximum cache size in MB
+  max_size: 1000
+  
+  # Cache key strategy
+  key_strategy: "content-hash"
+
+# Parallel processing
+parallel:
+  # Enable parallel processing
+  enabled: true
+  
+  # Number of worker threads
+  workers: 4
+  
+  # Batch size for parallel processing
+  batch_size: 50
+  
+  # Queue size for work items
+  queue_size: 1000
+
+# Memory management
+memory:
+  # Maximum heap size in MB
+  max_heap: 4096
+  
+  # Enable garbage collection optimization
+  gc_optimization: true
+  
+  # Memory usage threshold for warnings (percentage)
+  warning_threshold: 80
+  
+  # Memory usage threshold for automatic cleanup
+  cleanup_threshold: 90
+
+# Output configuration
+output:
+  # Output format
+  format: "json"
+  
+  # Compression for large outputs
+  compress: true
+  
+  # Streaming output for large results
+  streaming: true
+  
+  # Output chunking
+  chunk_size: 1000
+
+# Performance monitoring
+monitoring:
+  # Enable performance metrics collection
+  enabled: true
+  
+  # Metrics to collect
+  metrics:
+    - execution_time
+    - memory_usage
+    - cache_hits
+    - file_processing_time
+    - ast_parsing_time
+  
+  # Report interval in seconds
+  report_interval: 10
+
+# Optimization strategies
+optimizations:
+  # Skip files that haven't changed
+  incremental: true
+  
+  # Use file watchers for real-time updates
+  watch_mode: false
+  
+  # Lazy loading of AST nodes
+  lazy_ast: true
+  
+  # Precompile regex patterns
+  precompile_patterns: true
+  
+  # Use indexed lookups
+  use_indexes: true
+
+# File filtering
+filters:
+  # Maximum file size to process (bytes)
+  max_file_size: 1048576  # 1MB
+  
+  # Skip binary files
+  skip_binary: true
+  
+  # Skip minified files
+  skip_minified: true
+  
+  # Custom skip patterns
+  skip_patterns:
+    - "*.min.js"
+    - "*.bundle.js"
+    - "dist/**"
+    - "build/**"
+
+# Error handling
+error_handling:
+  # Continue on file errors
+  continue_on_error: true
+  
+  # Maximum errors before stopping
+  max_errors: 100
+  
+  # Error reporting level
+  error_level: "warn"
+
+# Batching configuration
+batching:
+  # Enable batch processing
+  enabled: true
+  
+  # Batch configurations
+  configs:
+    - name: "quick-analysis"
+      patterns: ["src/**/*.ts"]
+      max_depth: 5
+      cache: true
+      
+    - name: "deep-analysis"
+      patterns: ["src/**/*.ts"]
+      max_depth: 15
+      include_external: true
+      
+    - name: "test-analysis"
+      patterns: ["test/**/*.ts", "src/**/*.test.ts"]
+      max_depth: 10
+
+# Resource limits
+limits:
+  # Maximum analysis time in seconds
+  max_time: 3600
+  
+  # Maximum number of files to process
+  max_files: 10000
+  
+  # Maximum call tree nodes
+  max_nodes: 1000000
+  
+  # Maximum result size in MB
+  max_result_size: 500

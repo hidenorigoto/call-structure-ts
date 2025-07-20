@@ -1,0 +1,149 @@
+# Test Specification for Express API Example
+# Tests that routes properly delegate to controllers and services
+
+name: Express API Test Specification
+description: Verify proper layering and delegation in Express API
+
+test_cases:
+  - name: User Registration Flow
+    entry_point:
+      file: "src/routes/auth.ts"
+      function: "router.post('/register')"
+    expected_calls:
+      - validateRequest
+      - AuthController.register
+      - UserService.getUserByEmail
+      - UserService.createUser
+      - TokenService.generateVerificationToken
+      - EmailService.sendVerificationEmail
+    forbidden_calls:
+      - pattern: "bcrypt.*"
+        reason: "Password hashing should be in UserService, not controller"
+      - pattern: "database.*"
+        reason: "Controllers should not directly access database"
+
+  - name: User Login Flow
+    entry_point:
+      file: "src/controllers/authController.ts"
+      function: "AuthController.login"
+    expected_calls:
+      - AuthService.login
+      - UserService.getUserByEmail
+      - bcrypt.compare
+      - UserService.updateLastLogin
+      - TokenService.generateAccessToken
+      - TokenService.generateRefreshToken
+      - CacheService.set
+    must_handle_errors:
+      - "Invalid credentials"
+      - "User not active"
+
+  - name: Get Products with Caching
+    entry_point:
+      file: "src/controllers/productController.ts"
+      function: "ProductController.getAllProducts"
+    expected_calls:
+      - CacheService.get
+      - ProductService.getAllProducts # Only if cache miss
+      - CacheService.set # Only if cache miss
+    performance:
+      cache_hit_skip_calls:
+        - ProductService.getAllProducts
+        - DatabaseService.*
+
+  - name: Create Product Admin Flow
+    entry_point:
+      file: "src/routes/products.ts"
+      function: "router.post('/')"
+    expected_calls:
+      - adminOnly # Must check admin role
+      - validateRequest
+      - ProductController.createProduct
+      - ProductService.getProductBySku
+      - ProductService.createProduct
+      - CacheService.invalidatePattern
+    forbidden_calls:
+      - pattern: "UserService.*"
+        reason: "Product routes should not access user service"
+
+  - name: Authentication Middleware
+    entry_point:
+      file: "src/middleware/auth.ts"
+      function: "authMiddleware"
+    expected_calls:
+      - TokenService.verifyAccessToken
+      - UserService.getUserById
+    must_handle_errors:
+      - "No token provided"
+      - "Invalid token"
+      - "Token expired"
+      - "User not found"
+
+  - name: Error Handler Middleware
+    entry_point:
+      file: "src/middleware/errorHandler.ts"
+      function: "errorHandler"
+    expected_behavior:
+      - "Log all errors with logger"
+      - "Return appropriate status codes"
+      - "Hide stack traces in production"
+      - "Handle different error types differently"
+
+  - name: Rate Limiter Middleware
+    entry_point:
+      file: "src/middleware/rateLimiter.ts"
+      function: "rateLimiter"
+    expected_calls:
+      - CacheService.get
+      - CacheService.increment
+    expected_behavior:
+      - "Track requests per IP"
+      - "Return 429 when limit exceeded"
+      - "Set rate limit headers"
+
+# Architecture rules
+architecture_rules:
+  - name: Controller Service Separation
+    description: Controllers must delegate business logic to services
+    rule: Controllers should not contain business logic, only orchestration
+    
+  - name: Service Layer Independence
+    description: Services should not depend on Express types
+    forbidden_imports:
+      in: "src/services/**"
+      imports: ["express", "Request", "Response"]
+    
+  - name: Middleware Error Handling
+    description: All routes must be wrapped in error handling
+    required_pattern:
+      in: "src/routes/**"
+      pattern: "next(error)"
+
+# Performance considerations
+performance:
+  - name: Database Query Optimization
+    description: Use caching for frequently accessed data
+    patterns:
+      - "Cache before database query"
+      - "Invalidate cache on updates"
+      
+  - name: Async Operations
+    description: All database operations must be async
+    required_pattern:
+      in: "src/services/**"
+      pattern: "async|await|Promise"
+
+# Security requirements
+security:
+  - name: Password Handling
+    description: Passwords must be hashed before storage
+    forbidden_pattern:
+      in: "src/**"
+      pattern: "password: (?!.*bcrypt)"
+      except: ["src/services/userService.ts"]
+      
+  - name: SQL Injection Prevention
+    description: Use parameterized queries only
+    forbidden_pattern:
+      in: "src/**"
+      pattern: "query\\(.*\\$\\{|query\\(.*\\+"

@@ -1,0 +1,32 @@
+{
+  "name": "express-api-example",
+  "version": "1.0.0",
+  "description": "Express.js API example for call-structure-ts",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node src/server.ts",
+    "analyze": "call-structure analyze --entry src/server.ts#startServer --output analysis/server.json",
+    "analyze-routes": "call-structure analyze --entry src/routes/users.ts#router --format mermaid",
+    "test-spec": "call-structure test --spec test-spec.yaml"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "bcrypt": "^5.1.0",
+    "jsonwebtoken": "^9.0.0",
+    "dotenv": "^16.0.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "express-validator": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.17",
+    "@types/node": "^20.0.0",
+    "@types/bcrypt": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.0",
+    "@types/cors": "^2.8.13",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0"
+  }
+}

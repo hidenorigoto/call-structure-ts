@@ -41,7 +41,7 @@ export async function mixedAsyncPatterns(): Promise<void> {
   
   // Sequential processing with await
   const processed1 = await processInParallel(data1);
-  const processed2 = await processInParallel(data2);
+  await processInParallel(data2);
   
   // Promise.race for timeout/racing
   const result = await Promise.race([

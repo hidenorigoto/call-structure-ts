@@ -6,6 +6,7 @@ import { EntryPointAnalyzer } from '../analyzer/EntryPointAnalyzer';
 import { JsonFormatter } from '../formatter/JsonFormatter';
 import { YamlFormatter } from '../formatter/YamlFormatter';
 import { MermaidFormatter } from '../formatter/MermaidFormatter';
+import { DotFormatter } from '../formatter/DotFormatter';
 import { OutputFormat, ProjectContext, CallGraphError, CallGraph } from '../types/CallGraph';
 import { FormatOptions } from '../types/Formatter';
 import { logger, LogLevel } from '../utils/logger';
@@ -88,7 +89,7 @@ program
     'Entry point (format: "path/to/file.ts#functionName" or "path/to/file.ts#ClassName.methodName")'
   )
   .option('-o, --output <file>', 'Output file path')
-  .option('-f, --format <format>', 'Output format (json, yaml, mermaid)', 'json')
+  .option('-f, --format <format>', 'Output format (json, yaml, mermaid, dot)', 'json')
   .option('-d, --max-depth <depth>', 'Maximum analysis depth', '10')
   .option('--include-node-modules', 'Include node_modules in analysis')
   .option('--include-tests', 'Include test files in analysis')
@@ -408,6 +409,8 @@ function formatOutput(callGraph: CallGraph, format: OutputFormat, options: Forma
       return new YamlFormatter().format(callGraph, { format: 'yaml', ...options });
     case 'mermaid':
       return new MermaidFormatter().format(callGraph, { format: 'mermaid', ...options });
+    case 'dot':
+      return new DotFormatter().format(callGraph, { format: 'dot', ...options });
     default:
       throw new CallGraphError(`Unsupported output format: ${format}`, 'UNSUPPORTED_FORMAT');
   }

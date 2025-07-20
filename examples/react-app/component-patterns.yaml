@@ -1,0 +1,206 @@
+# Component Pattern Tests for React Application
+# Verify proper React patterns and best practices
+
+name: React Component Patterns
+description: Test React component structure and data flow patterns
+
+test_cases:
+  # Component Hierarchy Tests
+  - name: App Component Structure
+    entry_point:
+      file: "src/App.tsx"
+      function: "App"
+    expected_calls:
+      - QueryClientProvider
+      - AuthProvider
+      - ThemeProvider
+      - BrowserRouter
+      - ErrorBoundary
+    forbidden_calls:
+      - pattern: "useState"
+        reason: "App component should use store, not local state"
+
+  # Hook Usage Tests
+  - name: useAuth Hook
+    entry_point:
+      file: "src/hooks/useAuth.ts"
+      function: "useAuth"
+    expected_calls:
+      - useAppStore
+      - useNavigate
+      - useCallback
+      - useEffect
+    must_return:
+      - isAuthenticated
+      - user
+      - login
+      - logout
+
+  - name: useProducts Hook with React Query
+    entry_point:
+      file: "src/hooks/useProducts.ts"
+      function: "useProducts"
+    expected_calls:
+      - useQuery
+      - productService.getProducts
+    configuration:
+      - "keepPreviousData: true"
+      - "queryKey includes filters"
+
+  # Store Integration Tests
+  - name: Auth Slice Actions
+    entry_point:
+      file: "src/store/slices/authSlice.ts"
+      function: "authSlice"
+    expected_patterns:
+      - "async login function"
+      - "token storage"
+      - "error handling"
+    forbidden_patterns:
+      - pattern: "direct localStorage access"
+        reason: "Should use tokenService"
+
+  # Context Provider Tests
+  - name: Auth Context Provider
+    entry_point:
+      file: "src/contexts/AuthContext.tsx"
+      function: "AuthProvider"
+    expected_calls:
+      - useAppStore
+      - createContext
+      - useEffect
+    must_provide:
+      - isAuthenticated
+      - user
+      - login
+      - logout
+
+  # Component Render Tests
+  - name: Protected Route Guards
+    entry_point:
+      file: "src/components/ProtectedRoute.tsx"
+      function: "ProtectedRoute"
+    expected_behavior:
+      - "Redirect to login if not authenticated"
+      - "Show loading during auth check"
+      - "Render Outlet if authenticated"
+    expected_calls:
+      - useAuthContext
+      - Navigate
+      - Outlet
+
+  # Service Layer Tests
+  - name: API Client Interceptors
+    entry_point:
+      file: "src/services/api.ts"
+      function: "setupInterceptors"
+    expected_behavior:
+      - "Add auth token to requests"
+      - "Handle 401 with token refresh"
+      - "Queue requests during refresh"
+    expected_calls:
+      - tokenService.getAccessToken
+      - refreshToken
+
+  # Error Handling Tests
+  - name: Error Boundary
+    entry_point:
+      file: "src/components/ErrorBoundary.tsx"
+      function: "ErrorBoundary"
+    expected_methods:
+      - componentDidCatch
+      - getDerivedStateFromError
+    expected_behavior:
+      - "Catch and display errors"
+      - "Log to error service"
+      - "Provide recovery options"
+
+# Architecture Rules
+architecture_rules:
+  - name: Component Purity
+    description: Components should be pure and not have side effects
+    forbidden_in_components:
+      - "Direct API calls"
+      - "Direct localStorage access"
+      - "Direct store mutations"
+    
+  - name: Hook Rules
+    description: Custom hooks must follow React hook rules
+    required_prefix: "use"
+    must_start_with:
+      - "const"
+      - "function use"
+    
+  - name: Service Independence
+    description: Services should not import React
+    forbidden_imports:
+      in: "src/services/**"
+      imports: ["react", "react-dom"]
+
+# Data Flow Patterns
+data_flow:
+  - name: Authentication Flow
+    flow:
+      - User input in LoginPage
+      - Call useAuth hook
+      - Dispatch login action to store
+      - authService.login API call
+      - Update auth state
+      - Save tokens via tokenService
+      - Navigate to dashboard
+      
+  - name: Product List Flow
+    flow:
+      - ProductsPage component mount
+      - useProducts hook with filters
+      - React Query fetches data
+      - productService.getProducts API call
+      - Cache response
+      - Render product grid
+      
+  - name: State Management Flow
+    flow:
+      - Component uses useAppStore
+      - Access specific slice
+      - Dispatch action
+      - Zustand updates state
+      - Component re-renders
+
+# Performance Patterns
+performance:
+  - name: Memo Usage
+    description: Heavy components should use React.memo
+    check_for:
+      - React.memo on list items
+      - useMemo for expensive calculations
+      - useCallback for stable references
+      
+  - name: Code Splitting
+    description: Routes should be lazy loaded
+    required_pattern:
+      in: "src/App.tsx"
+      pattern: "React.lazy|lazy\\("
+      
+  - name: Query Optimization
+    description: React Query should have proper configuration
+    required_config:
+      - staleTime
+      - cacheTime
+      - refetchOnWindowFocus
+
+# Common Anti-patterns to Detect
+anti_patterns:
+  - name: Direct DOM Manipulation
+    forbidden_pattern:
+      pattern: "document\\.(getElementById|querySelector)"
+      except: ["src/services/tokenService.ts"]
+      
+  - name: Uncontrolled State Updates
+    forbidden_pattern:
+      pattern: "this\\.state\\s*="
+      reason: "Use setState or hooks"
+      
+  - name: Missing Dependencies
+    warning_pattern:
+      pattern: "useEffect\\(.*\\[\\]\\)"
+      message: "Check if effect needs dependencies"

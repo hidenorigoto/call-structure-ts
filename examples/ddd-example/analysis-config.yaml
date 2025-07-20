@@ -1,0 +1,139 @@
+# Batch Analysis Configuration for DDD Example
+# This configuration allows analyzing multiple entry points in one command
+
+name: DDD Example Analysis
+description: Analyze all major flows in the DDD example application
+
+# Global settings
+settings:
+  output_dir: "./analysis"
+  format: "json"
+  include_metrics: true
+  max_depth: 10
+  exclude_patterns:
+    - "**/*.test.ts"
+    - "**/*.spec.ts"
+    - "**/node_modules/**"
+
+# Entry points to analyze
+entry_points:
+  # Main application flow
+  - name: "Main Application"
+    file: "src/main.ts"
+    function: "main"
+    output: "main-flow.json"
+    description: "Complete application initialization and order creation flow"
+
+  # Use Case analyses
+  - name: "Create Order Use Case"
+    file: "src/application/use-cases/CreateOrderUseCase.ts"
+    function: "CreateOrderUseCase.execute"
+    output: "create-order-use-case.json"
+    description: "Order creation business logic flow"
+    options:
+      format: "mermaid"
+      output: "create-order-use-case.mmd"
+
+  # Service layer analyses
+  - name: "Order Service"
+    file: "src/application/services/OrderService.ts"
+    function: "OrderService.createOrder"
+    output: "order-service-create.json"
+    description: "Order service coordination logic"
+
+  - name: "Order Cancellation"
+    file: "src/application/services/OrderService.ts"
+    function: "OrderService.cancelOrder"
+    output: "order-service-cancel.json"
+    description: "Order cancellation flow"
+
+  - name: "Notification Service"
+    file: "src/application/services/NotificationService.ts"
+    function: "NotificationService.notifyOrderCreated"
+    output: "notification-flow.json"
+    description: "Order notification flow"
+
+  # Domain service analyses
+  - name: "Pricing Calculation"
+    file: "src/domain/services/PricingService.ts"
+    function: "PricingService.calculatePrice"
+    output: "pricing-calculation.json"
+    description: "Product pricing calculation logic"
+
+  - name: "Inventory Check"
+    file: "src/domain/services/InventoryService.ts"
+    function: "InventoryService.checkAvailability"
+    output: "inventory-check.json"
+    description: "Inventory availability check"
+
+  # Controller analyses
+  - name: "Order Controller"
+    file: "src/presentation/controllers/OrderController.ts"
+    function: "OrderController.createOrder"
+    output: "controller-flow.json"
+    description: "HTTP request handling flow"
+    options:
+      include_error_paths: true
+
+  # Aggregate analyses
+  - name: "Order Aggregate"
+    file: "src/domain/aggregates/OrderAggregate.ts"
+    function: "OrderAggregate.createOrder"
+    output: "order-aggregate.json"
+    description: "Order aggregate root operations"
+
+  # Repository analyses
+  - name: "Order Repository Save"
+    file: "src/infrastructure/repositories/OrderRepository.ts"
+    function: "OrderRepository.save"
+    output: "order-repo-save.json"
+    description: "Order persistence flow"
+
+# Comparative analyses
+comparisons:
+  - name: "Layer Dependencies"
+    description: "Compare calls between different layers"
+    entry_points:
+      - "OrderController.createOrder"
+      - "CreateOrderUseCase.execute"
+      - "OrderService.createOrder"
+    output: "layer-comparison.json"
+
+  - name: "Service Interactions"
+    description: "Compare different service interactions"
+    entry_points:
+      - "OrderService.createOrder"
+      - "OrderService.confirmOrder"
+      - "OrderService.cancelOrder"
+    output: "service-comparison.json"
+
+# Reports
+reports:
+  - name: "Architecture Compliance"
+    type: "architecture_test"
+    rules_file: "./architecture-rules.yaml"
+    output: "architecture-compliance.json"
+
+  - name: "Call Statistics"
+    type: "statistics"
+    output: "call-statistics.json"
+    include:
+      - total_functions
+      - total_calls
+      - max_depth
+      - circular_dependencies
+      - most_called_functions
+
+  - name: "Dependency Graph"
+    type: "dependency_graph"
+    output: "dependencies.dot"
+    options:
+      group_by: "directory"
+      include_external: false
+
+# Performance settings for large codebases
+performance:
+  parallel: true
+  cache: true
+  cache_dir: ".call-structure-cache"
+  max_workers: 4

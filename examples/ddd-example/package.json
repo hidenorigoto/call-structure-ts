@@ -1,0 +1,21 @@
+{
+  "name": "call-structure-ddd-example",
+  "version": "1.0.0",
+  "description": "Domain-Driven Design example for call-structure-ts",
+  "main": "src/main.ts",
+  "scripts": {
+    "build": "tsc",
+    "analyze": "call-structure analyze --entry src/main.ts#main --output analysis/main.json",
+    "analyze-use-case": "call-structure analyze --entry src/application/use-cases/CreateOrderUseCase.ts#CreateOrderUseCase.execute --output analysis/create-order.json",
+    "test-architecture": "call-structure test --spec architecture-rules.yaml",
+    "analyze-all": "call-structure analyze-batch --config analysis-config.yaml"
+  },
+  "dependencies": {
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.0",
+    "typescript": "^5.0.0"
+  }
+}

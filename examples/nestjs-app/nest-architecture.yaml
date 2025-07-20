@@ -1,0 +1,250 @@
+# NestJS Architecture Tests
+# Verify proper NestJS patterns and module structure
+
+name: NestJS Architecture Patterns
+description: Test NestJS module dependencies and decorator usage
+
+test_cases:
+  # Module Structure Tests
+  - name: App Module Bootstrap
+    entry_point:
+      file: "src/main.ts"
+      function: "bootstrap"
+    expected_calls:
+      - NestFactory.create
+      - app.useGlobalPipes
+      - app.useGlobalFilters
+      - app.useGlobalInterceptors
+      - SwaggerModule.setup
+      - app.listen
+    expected_order:
+      - "Create app before global setup"
+      - "Setup middleware before listen"
+
+  # Decorator Pattern Tests
+  - name: Controller Decorators
+    entry_point:
+      file: "src/modules/auth/auth.controller.ts"
+      function: "AuthController"
+    expected_decorators:
+      - "@Controller"
+      - "@ApiTags"
+      - "@Post"
+      - "@Get"
+      - "@UseGuards"
+      - "@Public"
+    forbidden_patterns:
+      - pattern: "direct database access"
+        reason: "Controllers should only use services"
+
+  # Dependency Injection Tests
+  - name: Service Dependencies
+    entry_point:
+      file: "src/modules/auth/auth.service.ts"
+      function: "AuthService"
+    expected_injection:
+      - UsersService
+      - JwtService
+      - ConfigService
+    constructor_validation:
+      - "All dependencies via constructor"
+      - "Private readonly properties"
+
+  # Module Import Tests
+  - name: Auth Module Structure
+    entry_point:
+      file: "src/modules/auth/auth.module.ts"
+      function: "AuthModule"
+    expected_structure:
+      imports:
+        - UsersModule
+        - PassportModule
+        - JwtModule
+      controllers:
+        - AuthController
+      providers:
+        - AuthService
+        - LocalStrategy
+        - JwtStrategy
+      exports:
+        - AuthService
+        - JwtModule
+
+  # Guard Implementation Tests
+  - name: JWT Auth Guard
+    entry_point:
+      file: "src/modules/auth/guards/jwt-auth.guard.ts"
+      function: "JwtAuthGuard"
+    expected_inheritance:
+      - "extends AuthGuard('jwt')"
+    expected_methods:
+      - canActivate
+      - handleRequest
+
+  # Service Layer Tests
+  - name: Users Service Methods
+    entry_point:
+      file: "src/modules/users/users.service.ts"
+      function: "UsersService"
+    expected_patterns:
+      - "Repository pattern usage"
+      - "Error handling with NestJS exceptions"
+      - "Cache integration"
+    async_methods:
+      - create
+      - findAll
+      - findOne
+      - update
+      - remove
+
+  # Interceptor Tests
+  - name: Transform Interceptor
+    entry_point:
+      file: "src/common/interceptors/transform.interceptor.ts"
+      function: "TransformInterceptor"
+    implements: "NestInterceptor"
+    expected_methods:
+      - intercept
+    uses_rxjs:
+      - Observable
+      - map
+
+  # DTO Validation Tests
+  - name: DTO Class Validators
+    pattern: "src/**/*.dto.ts"
+    expected_decorators:
+      - "@IsString"
+      - "@IsEmail"
+      - "@IsOptional"
+      - "@ApiProperty"
+    class_requirement: "All DTOs must be classes, not interfaces"
+
+# Architecture Rules
+architecture_rules:
+  - name: Module Boundaries
+    description: Modules should have clear boundaries
+    rules:
+      - "Controllers only in module folders"
+      - "Services only in module folders"
+      - "Entities only in entities folders"
+      - "DTOs only in dto folders"
+
+  - name: Dependency Direction
+    description: Dependencies should flow inward
+    forbidden_dependencies:
+      - from: "common/*"
+        to: "modules/*"
+        reason: "Common module should not depend on feature modules"
+      - from: "*.controller.ts"
+        to: "*.repository.ts"
+        reason: "Controllers should not directly access repositories"
+
+  - name: Decorator Usage
+    description: Proper decorator usage patterns
+    required_decorators:
+      - pattern: "*.controller.ts"
+        must_have: ["@Controller", "@ApiTags"]
+      - pattern: "*.service.ts"
+        must_have: "@Injectable"
+      - pattern: "*.module.ts"
+        must_have: "@Module"
+
+  - name: Exception Handling
+    description: Use NestJS built-in exceptions
+    preferred_exceptions:
+      - NotFoundException
+      - BadRequestException
+      - UnauthorizedException
+      - ConflictException
+    forbidden_pattern:
+      pattern: "throw new Error\\("
+      reason: "Use NestJS exceptions instead of generic Error"
+
+# Dependency Injection Patterns
+dependency_injection:
+  - name: Constructor Injection
+    description: All dependencies via constructor
+    required_pattern:
+      in: "*.service.ts"
+      pattern: "constructor\\(.*private readonly"
+    
+  - name: Module Providers
+    description: Services must be provided in modules
+    validation:
+      - "All services listed in module providers"
+      - "Exported services available to other modules"
+
+# Async Patterns
+async_patterns:
+  - name: Async Service Methods
+    description: Database operations must be async
+    required_pattern:
+      in: "*.service.ts"
+      pattern: "async .*(create|find|update|delete|save)"
+      
+  - name: Promise Handling
+    description: Proper promise handling
+    forbidden_pattern:
+      pattern: "\\.then\\(.*\\.catch\\("
+      reason: "Use async/await instead of promise chains"
+
+# Testing Patterns
+testing_patterns:
+  - name: Service Testing
+    description: Services should be testable
+    requirements:
+      - "Mock repository in tests"
+      - "Test error cases"
+      - "Test cache integration"
+      
+  - name: Controller Testing
+    description: Controllers should be testable
+    requirements:
+      - "Mock services"
+      - "Test guards and interceptors"
+      - "Test validation pipes"
+
+# Performance Patterns
+performance:
+  - name: Database Query Optimization
+    patterns:
+      - "Use select for partial fields"
+      - "Use pagination for lists"
+      - "Cache frequently accessed data"
+      
+  - name: Lazy Loading
+    description: Modules should be lazy loaded when possible
+    check_for:
+      - "Dynamic imports for large modules"
+      - "Conditional module loading"
+
+# Security Patterns
+security:
+  - name: Authentication Required
+    description: All routes except public should require auth
+    validation:
+      - "JwtAuthGuard on all controllers"
+      - "@Public decorator for open endpoints"
+      
+  - name: Input Validation
+    description: All inputs must be validated
+    required:
+      - "ValidationPipe globally"
+      - "DTOs with class-validator"
+      - "Transform pipe for type coercion"
+
+# Common Anti-patterns
+anti_patterns:
+  - name: Direct Database Access
+    forbidden_pattern:
+      in: "*.controller.ts"
+      pattern: "Repository|getConnection|createQueryBuilder"
+      
+  - name: Business Logic in Controllers
+    forbidden_pattern:
+      in: "*.controller.ts"
+      pattern: "bcrypt|hash|jwt|sign"
+      reason: "Business logic belongs in services"
+      
+  - name: Circular Dependencies
+    check: "No circular module imports"

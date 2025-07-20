@@ -8,6 +8,7 @@ import { logger } from '../../utils/logger';
 import { JsonFormatter } from '../../formatter/JsonFormatter';
 import { YamlFormatter } from '../../formatter/YamlFormatter';
 import { MermaidFormatter } from '../../formatter/MermaidFormatter';
+import { DotFormatter } from '../../formatter/DotFormatter';
 
 export interface BatchOptions {
   config: string;
@@ -300,6 +301,8 @@ function formatOutput(callGraph: CallGraph, format: OutputFormat, options: Forma
       return new YamlFormatter().format(callGraph, { format: 'yaml', ...options });
     case 'mermaid':
       return new MermaidFormatter().format(callGraph, { format: 'mermaid', ...options });
+    case 'dot':
+      return new DotFormatter().format(callGraph, { format: 'dot', ...options });
     default:
       throw new CallGraphError(`Unsupported output format: ${format}`, 'UNSUPPORTED_FORMAT');
   }
